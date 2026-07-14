@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bonfim-sdk"
+version = "0.1.0"
+description = "SDK for building reusable Bonfim Labs Skills"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Bonfim Labs"}]
+license = {file = "LICENSE"}
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["bonfim*"]
