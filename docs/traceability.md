@@ -1,17 +1,18 @@
-# SDK Traceability Matrix
+# BSD-001 Traceability Matrix
 
-| Requirement | Source | Implementation | Validation |
-|---|---|---|---|
-| `from bonfim import Skill` | Founder instruction | `src/bonfim/__init__.py` | `tests/test_sdk.py` |
-| New Skills specialize shared infrastructure | BL-SOF-001 Authority and Adoption Rule | `src/bonfim/skill.py` | Inheritance and minimal-subclass tests |
-| Universal Skill Structure | BL-SOF-001 section 4 | `SkillSpecification` and inherited declarations | Specification tests |
-| Evidence and confidence | BL-SOF-001 sections 5–7 | `Evidence`, `SkillOutput`, `SkillResult` | Evidence tests |
-| Quality gates | BL-SOF-001 section 8 | `Skill._quality_gates()` | Gate tests |
-| Fail safely | BL-SOF-001 section 9 | `SkillExecutionError` and failure boundary | Failure tests |
-| Security by default | BL-SOF-001 section 10 | `security.sensitive_paths()` | Secret-blocking tests |
-| Preserve human authority | BL-SOF-001 section 11 | Result contract and SDK limitations | Serialization tests |
-| Universal output | BL-SOF-001 section 12 | `SkillResult` | Result-contract tests |
-| Semantic versioning | BL-SOF-001 section 14 | Declaration validation | Invalid-version test |
+| Delivery | Implementation | Validation |
+|---|---|---|
+| Repository structure | `src/bonfim/*`, `tests`, `examples`, `templates`, `docs` | source-tree and build checks |
+| Framework base | `framework/base.py` | load, validate, register, dependency/cycle tests |
+| Skill base | `skill/base.py` | creation, validation, execution, security and compatibility tests |
+| Agent base | `agent/base.py` | parallel, sequential, partial and fail-fast tests |
+| Automation base | `automation/base.py` | trigger, retry, rollback and monitoring tests |
+| Six interfaces | `base/interfaces.py` | interface inheritance tests |
+| Eleven shared models | `models.py`, `schemas/__init__.py` | serialization and immutability tests |
+| Four registries | `registry.py` | lifecycle, duplicate, replace and allowlist tests |
+| Five templates | root and packaged `templates` | render, compile/JSON and no-overwrite tests |
+| CLI | `cli.py`, `__main__.py` | new, validate, run, doctor, version and error tests |
+| Four references | `examples/*.py` | direct execution tests |
+| Coverage | `pyproject.toml` | `coverage report --fail-under=90` |
 
-The SDK implementation is `Implementado` as a repository artifact. Its
-architecture remains Category C / Level D / `Proposta` until explicit approval.
+BSD-001 is implemented as repository code but remains Category C / Level D / `Proposta`. This traceability matrix does not record Founder approval or production readiness.

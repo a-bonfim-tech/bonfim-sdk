@@ -1,0 +1,123 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  secrets:
+    name: Full-history secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan current and historical content
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_VERSION: "8.30.1"
+
+  sbom:
+    name: CycloneDX SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Generate and preserve CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: artifacts/bonfim-sdk.cdx.json
+          artifact-name: bonfim-sdk-cyclonedx-${{ github.run_id }}-${{ github.run_attempt }}.json
+          upload-artifact: true
+          upload-artifact-retention: 30
+          upload-release-assets: false
+          dependency-snapshot: false
+          syft-version: v1.48.0
+
+  bqa:
+    name: BQA and BRE baseline evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Configure Python for the dependency-free verifier
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+      - name: Validate BQA baseline
+        run: python tools/bqa_verify.py --mode baseline --output artifacts/bqa-evidence.json
+      - name: Validate BRE release baseline
+        run: python tools/bre_verify.py --mode baseline --output artifacts/bre-evidence.json
+      - name: Preserve BQA and BRE evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: governance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/bqa-evidence.json
+            artifacts/bre-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
+  test:
+    name: SDK tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile source
+        run: python -m compileall -q src examples tests
+      - name: Run tests
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -v
+
+  quality:
+    name: Coverage and static quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install pinned development tools
+        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+      - name: Enforce coverage threshold
+        run: python -m coverage run -m unittest discover -s tests -v && python -m coverage report --fail-under=90
+      - name: Lint
+        run: python -m ruff check src tests examples
+      - name: Type check
+        run: python -m mypy -p bonfim
+      - name: SAST
+        run: python -m bandit -r src -q -lll -iii

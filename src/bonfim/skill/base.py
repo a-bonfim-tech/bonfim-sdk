@@ -1,14 +1,16 @@
-"""Template-method implementation of the approved Skill Operational Framework."""
+"""Governed Skill template method and compatibility adapter."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-import re
-from typing import Any, Mapping
+from collections.abc import Mapping
+from contextlib import suppress
+from typing import Any
 
-from .models import (
-    Evidence,
+from ..base import Executable, GovernedComponent
+from ..exceptions import ExecutionError, RegistrationError
+from ..models import (
     FAILURE_CATEGORIES,
+    Evidence,
     Provenance,
     QualityGate,
     SkillContext,
@@ -18,13 +20,11 @@ from .models import (
     SkillSpecification,
     utc_now,
 )
-from .security import sensitive_paths
+from ..security import sensitive_paths
+from ..utils import require_semver
 
 
-SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$")
-
-
-class SkillExecutionError(Exception):
+class SkillExecutionError(ExecutionError):
     """An expected, safely reportable Skill failure."""
 
     def __init__(self, category: str, message: str, operational_impact: str) -> None:
@@ -35,18 +35,19 @@ class SkillExecutionError(Exception):
         self.operational_impact = operational_impact
 
 
-class Skill(ABC):
-    """Base class for a reusable Bonfim Skill.
+class Skill(GovernedComponent, Executable):
+    """Base class that owns validation, execution and governed output.
 
-    Subclasses declare their specialization as class attributes and implement
-    only ``run``. The base class owns execution, validation, security, quality
-    gates, provenance, failure handling, and the universal SOF output contract.
+    New Skills implement :meth:`perform`. Pre-0.2 subclasses that implemented
+    ``run(context)`` are adapted at class creation so ``run(inputs)`` now calls
+    the complete infrastructure pipeline.
     """
 
     skill_id = ""
     name = ""
     version = ""
     mission = ""
+    description = ""
     scope: tuple[str, ...] = ()
     out_of_scope: tuple[str, ...] = ()
     activation_conditions: tuple[str, ...] = ()
@@ -77,16 +78,7 @@ class Skill(ABC):
         "Security",
         "Reproducibility",
     )
-    failure_modes = (
-        "Input Failure",
-        "Evidence Failure",
-        "Execution Failure",
-        "Validation Failure",
-        "Operational Failure",
-        "Documentation Failure",
-        "Security Failure",
-        "Unknown Failure",
-    )
+    failure_modes = tuple(sorted(FAILURE_CATEGORIES))
     security_policy = "Block output that appears to expose credentials, tokens, keys, or secrets"
     human_review_policy = "The Skill does not approve, certify, audit, merge, or replace human review"
     output_contract = "BL-SOF-001 v2.0.0 Universal Output Contract"
@@ -102,6 +94,44 @@ class Skill(ABC):
         "Security scan passed",
         "Human authority preserved",
     )
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        legacy_run = cls.__dict__.get("run")
+        super().__init_subclass__(**kwargs)
+        if legacy_run is not None and legacy_run is not Skill.run:
+            cls.perform = legacy_run  # type: ignore[method-assign]
+            cls.run = Skill.run  # type: ignore[method-assign]
+        cls.component_id = getattr(cls, "skill_id", "")
+        cls.description = getattr(cls, "mission", "")
+        if cls.auto_register and cls.component_id and not cls.validate():
+            from ..registry import skill_registry
+
+            with suppress(RegistrationError, ValueError):
+                skill_registry.register(cls)
+
+    @classmethod
+    def validate(cls) -> tuple[str, ...]:
+        errors = list(super().validate())
+        if not cls.skill_id:
+            errors.append(f"{cls.__name__}.skill_id must be declared")
+        for field_name in ("scope", "out_of_scope", "activation_conditions", "required_inputs", "optional_inputs"):
+            value = getattr(cls, field_name, None)
+            if not isinstance(value, tuple) or not all(isinstance(item, str) and item.strip() for item in value):
+                errors.append(f"{cls.__name__}.{field_name} must be a tuple of non-empty strings")
+        if not cls.scope:
+            errors.append(f"{cls.__name__}.scope must not be empty")
+        if not cls.activation_conditions:
+            errors.append(f"{cls.__name__}.activation_conditions must not be empty")
+        if cls.perform is Skill.perform:
+            errors.append(f"{cls.__name__}.perform must be implemented")
+        return tuple(dict.fromkeys(errors))
+
+    @classmethod
+    def _validate_declaration(cls) -> None:
+        errors = cls.validate()
+        if errors:
+            raise ValueError("; ".join(errors))
+        require_semver(cls.version, f"{cls.__name__}.version")
 
     @classmethod
     def specification(cls) -> SkillSpecification:
@@ -129,32 +159,12 @@ class Skill(ABC):
             internal_checklist=tuple(cls.internal_checklist),
         )
 
-    @classmethod
-    def _validate_declaration(cls) -> None:
-        required_text = {"skill_id": cls.skill_id, "name": cls.name, "version": cls.version, "mission": cls.mission}
-        for field_name, value in required_text.items():
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"{cls.__name__}.{field_name} must be declared")
-        if not SEMVER.fullmatch(cls.version):
-            raise ValueError(f"{cls.__name__}.version must use semantic versioning")
-        for field_name in ("scope", "out_of_scope", "activation_conditions", "required_inputs"):
-            value = getattr(cls, field_name)
-            if not isinstance(value, tuple) or not all(isinstance(item, str) and item.strip() for item in value):
-                raise ValueError(f"{cls.__name__}.{field_name} must be a tuple of non-empty strings")
-        if not cls.scope:
-            raise ValueError(f"{cls.__name__}.scope must not be empty")
-        if not cls.activation_conditions:
-            raise ValueError(f"{cls.__name__}.activation_conditions must not be empty")
-
-    @abstractmethod
-    def run(self, context: SkillContext) -> SkillOutput:
-        """Implement only the Skill-specific operational behavior."""
+    def perform(self, context: SkillContext) -> SkillOutput:
+        """Implement only the domain-specific behavior."""
 
         raise NotImplementedError
 
     def check_activation(self, context: SkillContext) -> tuple[bool, str]:
-        """Specialize when activation depends on machine-verifiable context."""
-
         return True, "Skill was explicitly invoked by the caller."
 
     @staticmethod
@@ -186,6 +196,15 @@ class Skill(ABC):
             data=data or {},
         )
 
+    def run(
+        self,
+        inputs: Mapping[str, Any],
+        *,
+        provenance: Provenance | None = None,
+        requested_by: str = "Unknown",
+    ) -> SkillResult:
+        return self.execute(inputs, provenance=provenance, requested_by=requested_by)
+
     def execute(
         self,
         inputs: Mapping[str, Any],
@@ -200,41 +219,39 @@ class Skill(ABC):
             context = SkillContext(inputs=inputs, provenance=provenance, requested_by=requested_by)
         except (TypeError, ValueError) as exc:
             return self._failure_result(
-                started_at=started_at,
-                provenance=provenance,
-                execution_id="not-started",
-                inputs=inputs if isinstance(inputs, Mapping) else {},
-                category="Input Failure",
-                message=f"Invalid Skill declaration or input contract: {type(exc).__name__}",
-                operational_impact="Execution did not start.",
+                started_at,
+                provenance,
+                "not-started",
+                inputs if isinstance(inputs, Mapping) else {},
+                "Input Failure",
+                f"Invalid Skill declaration or input contract: {type(exc).__name__}",
+                "Execution did not start.",
             )
 
         missing = tuple(name for name in specification.required_inputs if name not in context.inputs)
         if missing:
             return self._failure_result(
-                started_at=started_at,
-                provenance=provenance,
-                execution_id=context.execution_id,
-                inputs=context.inputs,
-                category="Input Failure",
-                message="Required inputs are missing.",
-                operational_impact="Skill-specific execution did not start.",
-                missing_inputs=missing,
+                started_at,
+                provenance,
+                context.execution_id,
+                context.inputs,
+                "Input Failure",
+                "Required inputs are missing.",
+                "Skill-specific execution did not start.",
+                missing,
             )
 
         try:
             activated, activation_reason = self.check_activation(context)
             if not activated:
                 raise SkillExecutionError(
-                    "Operational Failure",
-                    "Activation conditions were not satisfied.",
-                    activation_reason,
+                    "Operational Failure", "Activation conditions were not satisfied.", activation_reason
                 )
-            output = self.run(context)
+            output = self.perform(context)
             if not isinstance(output, SkillOutput):
                 raise SkillExecutionError(
                     "Validation Failure",
-                    "run() must return SkillOutput.",
+                    "perform() must return SkillOutput.",
                     "The non-conforming output was rejected.",
                 )
             exposed_paths = sensitive_paths(output)
@@ -246,23 +263,23 @@ class Skill(ABC):
                 )
         except SkillExecutionError as exc:
             return self._failure_result(
-                started_at=started_at,
-                provenance=provenance,
-                execution_id=context.execution_id,
-                inputs=context.inputs,
-                category=exc.category,
-                message=str(exc),
-                operational_impact=exc.operational_impact,
+                started_at,
+                provenance,
+                context.execution_id,
+                context.inputs,
+                exc.category,
+                str(exc),
+                exc.operational_impact,
             )
         except Exception as exc:
             return self._failure_result(
-                started_at=started_at,
-                provenance=provenance,
-                execution_id=context.execution_id,
-                inputs=context.inputs,
-                category="Unknown Failure",
-                message=f"Unhandled {type(exc).__name__}; details withheld.",
-                operational_impact="Execution stopped and no Skill output is valid.",
+                started_at,
+                provenance,
+                context.execution_id,
+                context.inputs,
+                "Unknown Failure",
+                f"Unhandled {type(exc).__name__}; details withheld.",
+                "Execution stopped and no Skill output is valid.",
             )
 
         unknown_provenance = tuple(
@@ -270,19 +287,9 @@ class Skill(ABC):
         )
         limitations = list(output.limitations)
         if unknown_provenance:
-            limitations.append(
-                "Provenance unavailable for: " + ", ".join(unknown_provenance) + "."
-            )
+            limitations.append("Provenance unavailable for: " + ", ".join(unknown_provenance) + ".")
         gates = self._quality_gates(output, missing, unknown_provenance, activation_reason)
         failed_gate = any(gate.state == "Fail" for gate in gates)
-        confidence = "Unknown" if failed_gate else output.confidence
-        confidence_justification = (
-            "One or more mandatory quality gates failed. " + output.confidence_justification
-            if failed_gate
-            else output.confidence_justification
-        )
-        final_verdict = "Unable to Assess" if failed_gate else output.final_verdict
-
         return SkillResult(
             skill_id=specification.identifier,
             skill_version=specification.version,
@@ -297,10 +304,11 @@ class Skill(ABC):
             findings=output.findings,
             risks=output.risks,
             limitations=tuple(limitations),
-            confidence=confidence,
-            confidence_justification=confidence_justification,
+            confidence="Unknown" if failed_gate else output.confidence,
+            confidence_justification=("One or more mandatory quality gates failed. " if failed_gate else "")
+            + output.confidence_justification,
             recommendation=output.recommendation,
-            final_verdict=final_verdict,
+            final_verdict="Unable to Assess" if failed_gate else output.final_verdict,
             follow_up_actions=output.follow_up_actions,
             quality_gates=gates,
             provenance=provenance,
@@ -308,9 +316,7 @@ class Skill(ABC):
         )
 
     def __call__(self, inputs: Mapping[str, Any]) -> dict[str, Any]:
-        """Adapter compatible with callable-based runtime registries."""
-
-        return self.execute(inputs).to_dict()
+        return self.run(inputs).to_dict()
 
     def _quality_gates(
         self,
@@ -319,6 +325,7 @@ class Skill(ABC):
         unknown_provenance: tuple[str, ...],
         activation_reason: str,
     ) -> tuple[QualityGate, ...]:
+        validation_missing = bool(output.evidence) and any(item.validation == "Unknown" for item in output.evidence)
         return (
             QualityGate("Objective Clarity", "Pass", self.mission),
             QualityGate(
@@ -340,26 +347,23 @@ class Skill(ABC):
             ),
             QualityGate(
                 "Validation Availability",
-                "Pass"
-                if output.evidence and all(item.validation != "Unknown" for item in output.evidence)
-                else "Fail"
-                if output.evidence
-                else "Not Applicable",
+                "Fail" if validation_missing else "Pass" if output.evidence else "Not Applicable",
                 "Evidence validation is recorded."
-                if output.evidence and all(item.validation != "Unknown" for item in output.evidence)
+                if output.evidence and not validation_missing
                 else "One or more evidence records lack validation."
                 if output.evidence
                 else "No evidence validation was applicable.",
             ),
             QualityGate("Risk Disclosure", "Pass", f"{len(output.risks)} risk(s) disclosed."),
-            QualityGate("Limitation Disclosure", "Pass", f"{len(output.limitations)} specialized limitation(s) disclosed."),
+            QualityGate(
+                "Limitation Disclosure", "Pass", f"{len(output.limitations)} specialized limitation(s) disclosed."
+            ),
             QualityGate("Security", "Pass", "No sensitive output pattern was detected."),
             QualityGate("Reproducibility", "Pass", activation_reason),
         )
 
     def _failure_result(
         self,
-        *,
         started_at: str,
         provenance: Provenance,
         execution_id: str,

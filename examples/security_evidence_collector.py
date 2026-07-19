@@ -18,7 +18,7 @@ class SecurityEvidenceCollector(Skill):
     required_inputs = ("artifacts",)
     optional_inputs = ("requirement_id",)
 
-    def run(self, context: SkillContext):
+    def perform(self, context: SkillContext):
         artifacts = context.inputs["artifacts"]
         if not isinstance(artifacts, Sequence) or isinstance(artifacts, (str, bytes)):
             raise SkillExecutionError(

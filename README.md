@@ -1,155 +1,197 @@
-# Bonfim SDK
+# Bonfim SDK — BSD-001
 
-## Executive Summary
+Reusable, governed Python infrastructure for Bonfim Frameworks, Skills, Agents and Automations.
 
-`bonfim-sdk` provides the reusable Python infrastructure required to build
-Bonfim Labs Skills as specializations of the approved `BL-SOF-001 v2.0.0`.
+> Category C — Architectural Proposals · Evidence Level D · Status: `Proposta` · Artifact state: `Implementado` · Origin: Founder instruction dated 2026-07-15.
 
-The intended API is available:
+Licensed under the [Apache License 2.0](LICENSE). Product names and marks remain
+subject to the trademark limitation recorded in [NOTICE](NOTICE).
+
+## Objective
+
+BSD-001 turns the Engineering Runtime contracts into a developer platform. A component author implements domain behavior while the SDK supplies validation, execution, traceability, governance metadata, output construction, registration and classified failure handling.
 
 ```python
-from bonfim import Skill
+from bonfim import Skill, SkillContext, SkillOutput
 
 
 class SecurityEvidenceCollector(Skill):
-    ...
-```
-
-New Skills declare their identity, mission, scope, activation conditions, and
-inputs, then implement only `run()`. The SDK supplies the common execution
-pipeline, provenance, quality gates, security checks, failures, output contract,
-registry, runner, and runtime adapter.
-
-## Knowledge Classification
-
-| Field | Value |
-|---|---|
-| Knowledge category | Category C — Architectural Proposals |
-| Evidence level | Level D — Internal Proposal or Convention |
-| Approval status | Proposta |
-| Artifact state | Implementado |
-| Origin | Founder instruction dated 2026-07-14 |
-| Justification | Avoid duplicating Skill infrastructure across Bonfim Labs |
-| Version | 0.1.0 |
-
-`BL-SOF-001 v2.0.0` is an approved Category B internal convention. The SDK is a
-new Category C implementation proposal derived from it; the SDK is not an
-international standard and has not been approved for production use.
-
-## Create a Skill
-
-```python
-from bonfim import Evidence, Skill, SkillContext
-
-
-class SecurityEvidenceCollector(Skill):
-    skill_id = "SEC-001"
+    skill_id = "SEC-EVD-001"
     name = "Security Evidence Collector"
     version = "0.1.0"
-    mission = "Package supplied security artifacts as traceable evidence."
-    scope = ("Security evidence packaging",)
-    out_of_scope = ("Compliance certification", "Control implementation")
-    activation_conditions = ("Explicit evidence-collection request",)
+    mission = "Package authorized artifacts as evidence."
+    scope = ("Evidence packaging",)
+    out_of_scope = ("Certification", "Remediation")
+    activation_conditions = ("Explicit evidence request",)
     required_inputs = ("artifacts",)
 
-    def run(self, context: SkillContext):
-        evidence = tuple(
-            Evidence(
-                identifier=f"EVD-{index:03d}",
-                summary=str(artifact),
-                category="Security Evidence",
-                origin=context.provenance.origin,
-                validation="Recorded but not independently validated",
-                confidence="Low",
-            )
-            for index, artifact in enumerate(context.inputs["artifacts"], start=1)
-        )
+    def perform(self, context: SkillContext) -> SkillOutput:
         return self.output(
-            f"Collected {len(evidence)} artifact(s).",
-            evidence=evidence,
+            f"Received {len(context.inputs['artifacts'])} artifact(s).",
+            limitations=("Authenticity was not independently validated.",),
             confidence="Low",
-            confidence_justification="Independent validation was not performed.",
-            recommendation="Validate authenticity before relying on the package.",
+            confidence_justification="Only caller-supplied artifacts were observed.",
             final_verdict="Review Required",
         )
+
+
+collector = SecurityEvidenceCollector()
+result = collector.run({"artifacts": ["test.log"]})
+print(result.to_dict())
 ```
 
-A fuller executable example is available in
-[`examples/security_evidence_collector.py`](examples/security_evidence_collector.py).
+The author does not implement registry wiring, provenance degradation, quality gates, secret-output blocking, timestamps, safe failures or serialization.
 
-## Execute Directly
+## Architecture
 
-```python
-from bonfim import Provenance
-
-result = SecurityEvidenceCollector().execute(
-    {"artifacts": ["test output", "configuration snapshot"]},
-    provenance=Provenance(
-        origin="local validation",
-        producer="security engineer",
-        collection_method="direct observation",
-        environment="development",
-        artifact="evidence bundle",
-        repository="example/repository",
-        branch="main",
-        commit="abc123",
-        issue="SEC-100",
-        pull_request="Not Applicable",
-    ),
-)
-
-assert result.status == "Succeeded"
+```text
+Developer component
+       │
+       ├── Framework ── load · validate · register · dependencies
+       ├── Skill ────── validate · perform · findings · confidence · output
+       ├── Agent ────── select Skills · bounded parallelism · aggregate
+       └── Automation ─ trigger · workflow · retry · rollback · monitor
+               │
+               ▼
+Executable · Validatable · Traceable · Governable · Versionable · Documentable
+               │
+               ▼
+Shared models + central registries + security boundary + OutputContract
 ```
 
-## Register and Run
+All base components implement the six formal interfaces. Imported valid subclasses register automatically. Installed package plugins are loaded only through an explicitly allowlisted entry-point discovery call.
 
-```python
-from bonfim import SkillRegistry, SkillRunner
+## Dependencies
 
-registry = SkillRegistry()
-registry.register(SecurityEvidenceCollector())
+- Python 3.11 or newer.
+- Python standard library only at runtime.
+- `setuptools` for package construction.
+- Optional pinned development tools: Coverage, Ruff and mypy.
 
-runner = SkillRunner(registry)
-result = runner.run("SEC-001", {"artifacts": ["test output"]})
-```
-
-`Skill` instances are also callable and return dictionaries, allowing direct
-registration with callable-based runtime executors without coupling this SDK to
-one runtime implementation.
+No network service, database, dynamic filesystem scan or runtime dependency on `bonfim-engineering-runtime` is required.
 
 ## Installation
 
-Python 3.11 or newer is required.
-
-```sh
-python3 -m pip install -e .
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+bonfim doctor
 ```
 
-There are no third-party runtime dependencies.
+## Formal interfaces
+
+- `Executable`
+- `Validatable`
+- `Traceable`
+- `Governable`
+- `Versionable`
+- `Documentable`
+
+## Shared models
+
+`Finding`, `Evidence`, `Risk`, `Limitation`, `Recommendation`, `Decision`, `Confidence`, `Traceability`, `Requirement`, `Observation` and `OutputContract` are exported directly from `bonfim` and through `bonfim.schemas`.
+
+## Central registries
+
+```python
+from bonfim import skill_registry
+
+assert "SEC-EVD-001" in skill_registry.identifiers()
+result = skill_registry.get("SEC-EVD-001").run({"artifacts": []})
+```
+
+Available registries:
+
+- `SkillRegistry` / `skill_registry`
+- `AgentRegistry` / `agent_registry`
+- `AutomationRegistry` / `automation_registry`
+- `FrameworkRegistry` / `framework_registry`
+
+Entry-point discovery is opt-in and allowlisted:
+
+```python
+skill_registry.discover("bonfim.skills", allowlist=("approved-package-skill",))
+```
+
+## CLI
+
+```bash
+bonfim new skill SecurityEvidenceCollector --id SEC-EVD-001 --directory src/my_project
+bonfim new agent EvidenceAgent --id AGENT-EVD-001
+bonfim new automation EvidenceWorkflow --id AUT-EVD-001
+bonfim validate --module my_project.skills
+bonfim run SEC-EVD-001 --module my_project.skills --inputs '{"artifacts":[]}'
+bonfim doctor
+bonfim version
+```
+
+`new framework` and `new specification` are also supported. Creation is exclusive: the CLI refuses to overwrite an existing component file.
+
+## Official templates
+
+The canonical templates are in [`templates/`](templates/). Packaged copies drive the CLI so installed users receive the exact same contracts.
+
+No component should begin outside these templates without an explicitly recorded exception and review.
+
+## Reference implementations
+
+- [`SecurityEvidenceCollector`](examples/security_evidence_collector.py)
+- [`GitHubPRReadinessReviewer`](examples/github_pr_readiness_reviewer.py)
+- [`SecurityComplianceReviewer`](examples/security_compliance_reviewer.py)
+- [`GovernanceDocumentationGenerator`](examples/governance_documentation_generator.py)
+
+All examples use caller-supplied or synthetic data, remain read-only and require human review.
+
+## Execution flow
+
+1. Import or explicitly load a component.
+2. Validate its declaration, Semantic Versioning value and input contract.
+3. Resolve it through the appropriate registry or instantiate it directly.
+4. Create immutable context and traceability metadata.
+5. Execute domain behavior in-process.
+6. Reject non-contract or secret-like output.
+7. Evaluate quality, evidence, confidence and limitations.
+8. Return a serializable governed result requiring human decision.
+
+## Security implications and trade-offs
+
+| Decision | Advantage | Residual risk |
+|---|---|---|
+| Imported-class auto-registration | Minimal developer wiring; deterministic | Importing code executes trusted package initialization |
+| Allowlisted entry points | Controlled ecosystem extension | Package authenticity/signature is not yet enforced |
+| In-process execution | Simple and fast | No sandbox for untrusted components |
+| Bounded thread parallelism | Lower latency with deterministic aggregation | Shared-process components can interfere with each other |
+| Explicit rollback | Observable compensating behavior | Rollback cannot guarantee reversal of every external effect |
+| Secret-pattern guard | Blocks common accidental disclosures | Not a complete DLP control |
+
+Never run untrusted third-party components in this baseline. Network exposure, workload identity, signed packages, capability tokens, process isolation and durable tamper-evident audit logs remain future security gates.
 
 ## Validation
 
-```sh
-PYTHONPATH=src python3 -m unittest discover -s tests -v
+```bash
+python -m compileall -q src examples tests
+PYTHONPATH=src python -m coverage run -m unittest discover -s tests -v
+python -m coverage report --fail-under=90
+python -m ruff check src tests examples
+python -m mypy -p bonfim
 ```
 
-## Architecture and Traceability
+## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Interfaces and models](docs/interfaces-and-models.md)
+- [CLI and templates](docs/cli-and-templates.md)
+- [Security model](docs/security.md)
 - [Traceability matrix](docs/traceability.md)
 
-## Risks and Limitations
+## Limitations
 
-- Skill code runs in-process and is not sandboxed.
-- Output secret detection is defense in depth, not a complete DLP control.
-- The explicit registry does not automatically discover installed plugins.
-- Persistence, remote execution, signing, package publication, and trust-policy
-  enforcement are not implemented.
-- Skills support human review and cannot certify, approve, audit, or replace an
-  accountable decision authority.
+- BSD-001 remains Category C / Level D / `Proposta` until explicit Founder approval.
+- Agent aggregation and Automation rollback are local infrastructure baselines, not operational authority.
+- No persistence, scheduling, remote execution, connector implementation or package signing is included.
+- Successful execution does not prove an external effect, compliance, certification or approval.
 
-## Next Logical Step
+## Versioning
 
-Perform independent API, security, and SOF-conformance review. Then define the
-signed package-distribution and runtime-isolation model before accepting
-third-party Skills.
+The BSD-001 implementation is version `0.2.0` and follows Semantic Versioning. See [CHANGELOG.md](CHANGELOG.md), [RELEASING.md](RELEASING.md) and [SECURITY.md](SECURITY.md).
