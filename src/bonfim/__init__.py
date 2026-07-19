@@ -1,24 +1,69 @@
-"""Public API for the Bonfim Skill SDK."""
+"""Public API for the Bonfim development SDK."""
 
+from .agent import Agent, AgentRegistry, agent_registry
+from .automation import Automation, AutomationRegistry, WorkflowStep, automation_registry
+from .base import Documentable, Executable, Governable, Traceable, Validatable, Versionable
+from .framework import Framework, FrameworkRegistry, framework_registry
 from .models import (
+    Confidence,
+    Decision,
     Evidence,
+    Finding,
+    Limitation,
+    Observation,
+    OutputContract,
     Provenance,
     QualityGate,
+    Recommendation,
+    Requirement,
+    Risk,
     SkillContext,
     SkillFailure,
     SkillOutput,
     SkillResult,
     SkillSpecification,
+    Traceability,
 )
-from .registry import SkillRegistry, SkillRunner
-from .skill import Skill, SkillExecutionError
+from .registry import SkillRegistry, SkillRunner, skill_registry
+from .skill import (
+    GITHUB_PR_REVIEW_SKILLS,
+    PullRequestEvidenceCollector,
+    PullRequestGovernanceReviewer,
+    PullRequestReadinessReviewer,
+    PullRequestSecurityReviewer,
+    Skill,
+    SkillExecutionError,
+)
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
+    "Agent",
+    "AgentRegistry",
+    "Automation",
+    "AutomationRegistry",
+    "Confidence",
+    "Decision",
+    "Documentable",
     "Evidence",
+    "Executable",
+    "Finding",
+    "Framework",
+    "FrameworkRegistry",
+    "Governable",
+    "GITHUB_PR_REVIEW_SKILLS",
+    "Limitation",
+    "Observation",
+    "OutputContract",
     "Provenance",
+    "PullRequestEvidenceCollector",
+    "PullRequestGovernanceReviewer",
+    "PullRequestReadinessReviewer",
+    "PullRequestSecurityReviewer",
     "QualityGate",
+    "Recommendation",
+    "Requirement",
+    "Risk",
     "Skill",
     "SkillContext",
     "SkillExecutionError",
@@ -28,4 +73,13 @@ __all__ = [
     "SkillResult",
     "SkillRunner",
     "SkillSpecification",
+    "Traceability",
+    "Traceable",
+    "Validatable",
+    "Versionable",
+    "WorkflowStep",
+    "agent_registry",
+    "automation_registry",
+    "framework_registry",
+    "skill_registry",
 ]

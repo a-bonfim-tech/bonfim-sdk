@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0",
+  "repository": "sdk",
+  "componentVersion": "0.2.0",
+  "governance": {
+    "knowledgeCategory": "C",
+    "evidenceLevel": "D",
+    "approvalStatus": "Proposta"
+  },
+  "artifacts": {
+    "sourceCode": {
+      "status": "available",
+      "path": "src"
+    },
+    "releaseNotes": {
+      "status": "planned",
+      "justification": "Version-specific release notes have not been frozen or approved."
+    },
+    "changelog": {
+      "status": "available",
+      "path": "CHANGELOG.md"
+    },
+    "migrationGuide": {
+      "status": "planned",
+      "justification": "A version-specific migration guide has not been prepared."
+    },
+    "openapi": {
+      "status": "not_applicable",
+      "justification": "This component does not expose an HTTP API contract."
+    },
+    "documentation": {
+      "status": "available",
+      "path": "docs"
+    },
+    "examples": {
+      "status": "available",
+      "path": "examples"
+    },
+    "sbom": {
+      "status": "available",
+      "path": "artifacts/bonfim-sdk.cdx.json"
+    },
+    "checksums": {
+      "status": "planned",
+      "justification": "Release artifact checksums have not been generated or verified."
+    },
+    "licenseInformation": {
+      "status": "available",
+      "path": "LICENSE"
+    },
+    "evidencePackage": {
+      "status": "planned",
+      "justification": "A certified release evidence package has not been assembled."
+    },
+    "securityDisclosure": {
+      "status": "available",
+      "path": "SECURITY.md"
+    },
+    "compatibilityPolicy": {
+      "status": "planned",
+      "justification": "Supported versions, deprecation and removal schedules are not approved."
+    }
+  },
+  "bqa": {
+    "status": "Requires Revision"
+  },
+  "humanReviewStatus": "pending",
+  "publicReleaseAuthorized": false
+}

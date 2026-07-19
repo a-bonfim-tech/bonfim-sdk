@@ -1,80 +1,43 @@
-# Bonfim SDK Architecture
+# BSD-001 Architecture
 
 ## Document control
 
 | Field | Value |
 |---|---|
-| Identifier | SDK-ARCH-001 |
+| Identifier | `BSD-ARCH-001` |
 | Knowledge category | Category C — Architectural Proposals |
 | Evidence level | Level D — Internal Proposal or Convention |
 | Approval status | Proposta |
-| Origin | Founder instruction dated 2026-07-14 |
-| Justification | Provide reusable infrastructure for new Bonfim Labs Skills |
-| Version | 0.1.0 |
+| Artifact state | Implementado |
+| Origin | Founder instruction dated 2026-07-15 |
+| Version | 0.2.0 |
 
-## Objective
+## Boundaries
 
-Allow a developer to create a new Skill by importing `Skill`, declaring the
-specialization, and implementing `run()` without recreating common execution,
-governance, evidence, failure, security, registry, or output infrastructure.
+`bonfim-sdk` owns developer-facing abstractions and dependency-free local execution. `bonfim-engineering-runtime` remains the higher-level runtime/integration boundary. The SDK does not deploy workloads, schedule jobs, provide connectors or confer framework authority.
 
-## Architecture
+## Component model
 
-```text
-BL-SOF-001 v2.0.0 (approved internal framework)
-                       |
-                     Skill
-             +---------+---------+
-             |                   |
-     Skill specialization   Shared pipeline
-          run() only         validation
-                             provenance
-                             security
-                             quality gates
-                             output contract
-                             failure handling
-                                    |
-                         SkillRegistry / SkillRunner
-```
+| Component | Domain method | Shared infrastructure |
+|---|---|---|
+| Framework | definition/specification | JSON load, validation, registration, dependency ordering |
+| Skill | `perform(context)` | input validation, provenance, quality gates, security, result serialization |
+| Agent | `select_skills(inputs)` | bounded parallel/sequential execution and deterministic aggregation |
+| Automation | workflow step `execute()`/optional `rollback()` | trigger validation, retry, reverse rollback and observations |
 
-## Execution flow
+## Registration and discovery
 
-1. Resolve a Skill through the explicit registry or instantiate it directly.
-2. Build immutable input context and provenance.
-3. Validate Skill declaration, semantic version, activation, and required input.
-4. Execute only the specialization's `run()` method.
-5. Reject outputs that do not implement `SkillOutput`.
-6. Block outputs containing likely credentials, tokens, keys, or secrets.
-7. Evaluate explicit SOF quality gates.
-8. Return `SkillResult` with all universal output sections.
+Valid component subclasses are registered when their defining module is imported. This is automatic registration, not arbitrary discovery. External packages require an explicit `discover(group, allowlist=...)` call. No directory walking, `eval`, string execution or silent import of every installed entry point is permitted.
 
-## Dependencies
+## Failure model
 
-- Python 3.11 or newer.
-- Python standard library at runtime.
-- `setuptools` only for package construction.
-- No dependency on `bonfim-engineering-runtime`; `Skill.__call__` provides a
-  serialization-friendly adapter for callable registries.
+- Validation failures stop before domain execution.
+- Expected Skill failures use classified `SkillExecutionError` records.
+- Unexpected exception messages are withheld.
+- Agent partial results remain visible; aggregation order follows the declared Skill order.
+- Automation retry count is bounded to five; rollback runs only for completed steps and reports missing/failed rollback operations.
+- No result represents institutional approval.
 
-## Security implications
+## Compatibility
 
-- Skill registration is explicit; there is no dynamic import or string evaluation.
-- Registered Skill code is trusted in-process code and is not sandboxed.
-- Unexpected exception details are withheld from results.
-- Inputs are not reproduced automatically; only input field names are recorded.
-- Output scanning is defense in depth and cannot guarantee detection of every secret.
-- Skills cannot emit institutional approval; every serialized result states that a
-  human decision is required.
-
-## Trade-offs
-
-| Option | Advantages | Risks | Complexity | Cost |
-|---|---|---|---|---|
-| Inheritance with template method | Minimal subclass code; consistent controls | Python subclasses can intentionally bypass conventions | Low | Low |
-| Explicit registry | Auditable and deterministic | Manual registration required | Low | Low |
-| Automatic plugin discovery | Less wiring for large ecosystems | Supply-chain and import-time execution risk | Medium | Medium |
-| Out-of-process sandbox | Stronger isolation | IPC, deployment and observability overhead | High | High |
-
-The implemented baseline uses inheritance plus explicit registration. A
-sandbox boundary should be introduced before running untrusted third-party
-Skills.
+SDK 0.2 adapts pre-0.2 subclasses that implemented `run(context)` by moving that method to the domain execution hook at class creation. The public `run(inputs)` method therefore executes the complete pipeline while `execute(inputs)` remains supported for downstream Agents.

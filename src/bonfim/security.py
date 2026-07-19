@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import fields, is_dataclass
 import re
-from typing import Any, Mapping
-
+from collections.abc import Mapping
+from dataclasses import fields, is_dataclass
+from typing import Any
 
 SENSITIVE_KEYS = frozenset(
     {
-    "password",
-    "passwd",
-    "secret",
-    "token",
-    "api_key",
-    "apikey",
-    "private_key",
-    "credential",
-    "credentials",
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "private_key",
+        "credential",
+        "credentials",
     }
 )
 

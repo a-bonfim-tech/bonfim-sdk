@@ -1,0 +1,28 @@
+{
+  "confidence": "high",
+  "environment": {
+    "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6"
+  },
+  "errors": [],
+  "executionId": "0ea145c0-2fba-42f2-a507-cfb440dc0260",
+  "limitations": [
+    "This verifier checks declared local evidence; it does not publish, sign, approve or certify a release."
+  ],
+  "mode": "baseline",
+  "openGaps": [
+    "artifact:checksums",
+    "artifact:compatibilityPolicy",
+    "artifact:evidencePackage",
+    "artifact:migrationGuide",
+    "artifact:releaseNotes",
+    "gate:bqa-approved",
+    "gate:human-review",
+    "gate:public-release-authorization"
+  ],
+  "publicationPerformed": false,
+  "repository": "sdk",
+  "result": "Requires Revision",
+  "timestamp": "2026-07-19T15:14:38.434825+00:00",
+  "version": "0.2.0"
+}

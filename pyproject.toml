@@ -4,18 +4,61 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bonfim-sdk"
-version = "0.1.0"
-description = "SDK for building reusable Bonfim Labs Skills"
+version = "0.2.0"
+description = "Governed SDK for reusable Bonfim Frameworks, Skills, Agents and Automations"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Bonfim Labs"}]
-license = {file = "LICENSE"}
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "bandit==1.9.4",
+  "coverage==7.10.7",
+  "mypy==1.18.2",
+  "ruff==0.13.2",
+]
+
+[project.scripts]
+bonfim = "bonfim.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["bonfim*"]
+
+[tool.setuptools.package-data]
+bonfim = ["py.typed"]
+"bonfim.templates" = ["*.tpl"]
+
+[tool.coverage.run]
+source = ["bonfim"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = [
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  '\.\.\.',
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["bonfim"]
+warn_unused_ignores = true

@@ -1,0 +1,73 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Validate and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate Semantic Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Tag must be vMAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+          version="$(tr -d '[:space:]' < VERSION)"
+          test "${tag}" = "v${version}"
+          test "$(git cat-file -t "refs/tags/${tag}")" = "tag"
+          grep -Fq "## [${version}]" CHANGELOG.md
+
+      - name: Validate package manifest
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import tomllib
+
+          expected = Path("VERSION").read_text().strip()
+          if Path("pyproject.toml").exists():
+              actual = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          elif Path("package.json").exists():
+              actual = json.loads(Path("package.json").read_text())["version"]
+          else:
+              actual = expected
+          if actual != expected:
+              raise SystemExit(f"manifest version {actual!r} does not match VERSION {expected!r}")
+          PY
+
+      - name: Enforce BQA release gate
+        run: python3 tools/bqa_verify.py --mode release --output artifacts/bqa-release-evidence.json
+
+      - name: Enforce BRE public release gate
+        run: python3 tools/bre_verify.py --mode release --output artifacts/bre-release-evidence.json
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "Release already exists; tags and releases are immutable." >&2
+            exit 1
+          fi
+          gh release create "${GITHUB_REF_NAME}" --verify-tag --title "${GITHUB_REF_NAME}" --generate-notes

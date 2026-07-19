@@ -4,14 +4,20 @@ import runpy
 import unittest
 
 from bonfim import (
+    Documentable,
     Evidence,
+    Executable,
+    Governable,
     Provenance,
     Skill,
     SkillContext,
-    SkillExecutionError,
     SkillOutput,
     SkillRegistry,
     SkillRunner,
+    Traceable,
+    Validatable,
+    Versionable,
+    skill_registry,
 )
 
 
@@ -104,6 +110,13 @@ class SDKPublicAPITests(unittest.TestCase):
 
         self.assertIs(PublicSkill, Skill)
 
+    def test_skill_implements_all_formal_interfaces(self) -> None:
+        for interface in (Executable, Validatable, Traceable, Governable, Versionable, Documentable):
+            self.assertTrue(issubclass(DemoSkill, interface))
+
+    def test_imported_skill_is_registered_automatically(self) -> None:
+        self.assertIn("DEMO-001", skill_registry.identifiers())
+
     def test_minimal_subclass_inherits_sof_infrastructure(self) -> None:
         specification = DemoSkill.specification()
         self.assertEqual(specification.framework, "BL-SOF-001@2.0.0")
@@ -120,6 +133,11 @@ class SDKPublicAPITests(unittest.TestCase):
 
 
 class SkillExecutionTests(unittest.TestCase):
+    def test_run_inputs_executes_complete_pipeline(self) -> None:
+        result = DemoSkill().run({"value": "minutes"}, provenance=complete_provenance())
+        self.assertEqual(result.status, "Succeeded")
+        self.assertEqual(result.data["echo"], "minutes")
+
     def test_successful_execution_returns_universal_contract(self) -> None:
         result = DemoSkill().execute({"value": 42}, provenance=complete_provenance())
         self.assertEqual(result.status, "Succeeded")
@@ -177,9 +195,7 @@ class RegistryTests(unittest.TestCase):
     def test_registry_and_runner_execute_by_identifier(self) -> None:
         registry = SkillRegistry()
         registry.register(DemoSkill())
-        result = SkillRunner(registry).run(
-            "DEMO-001", {"value": "registered"}, provenance=complete_provenance()
-        )
+        result = SkillRunner(registry).run("DEMO-001", {"value": "registered"}, provenance=complete_provenance())
         self.assertEqual(result.status, "Succeeded")
         self.assertEqual(registry.identifiers(), ("DEMO-001",))
 

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0", "repository": "sdk", "componentVersion": "0.2.0",
+  "governance": {"knowledgeCategory": "C", "evidenceLevel": "D", "approvalStatus": "Proposta"},
+  "targets": {"unitCoverage": 90, "integrationCoverage": 80, "criticalWorkflows": 100, "criticalSecurityControls": 100, "publicApiContracts": 100, "frameworkValidation": 100, "evidenceGeneration": 100},
+  "categories": {
+    "unit": {"status": "required", "command": "python -m unittest discover -s tests -v", "evidence": ["tests"]},
+    "integration": {"status": "required", "command": "python -m unittest discover -s tests -v", "evidence": ["tests"]},
+    "contract": {"status": "required", "command": "python -m unittest discover -s tests -v", "evidence": ["tests"]},
+    "regression": {"status": "required", "command": "python -m unittest discover -s tests -v", "evidence": ["tests"]},
+    "e2e": {"status": "not_applicable", "justification": "The SDK is a library and its system boundaries are exercised by downstream repositories."},
+    "performance": {"status": "planned", "justification": "A repeatable registry and orchestration performance baseline remains to be implemented."},
+    "load": {"status": "not_applicable", "justification": "The SDK does not operate a concurrent network service."},
+    "stress": {"status": "not_applicable", "justification": "Stress behavior belongs to deployed runtime consumers of the SDK."},
+    "chaos": {"status": "not_applicable", "justification": "The SDK has no distributed infrastructure boundary."},
+    "security": {"status": "required", "command": "python -m unittest discover -s tests -v && python -m bandit -r src -q -lll -iii && gitleaks git --redact", "evidence": ["tests", "src", ".github/workflows/ci.yml"]},
+    "accessibility": {"status": "not_applicable", "justification": "The Python SDK does not provide a graphical user interface."},
+    "documentation": {"status": "required", "command": "python -m compileall -q examples", "evidence": ["README.md", "docs", "examples"]},
+    "governance": {"status": "required", "command": "python tools/bqa_verify.py --mode baseline", "evidence": ["docs"]},
+    "schema": {"status": "required", "command": "python -m unittest discover -s tests -v", "evidence": ["src/bonfim/schemas", "tests"]},
+    "api": {"status": "required", "command": "python -m unittest discover -s tests -v", "evidence": ["src/bonfim", "tests"]}
+  },
+  "staticChecks": {
+    "typing": {"status": "required"}, "linting": {"status": "required"},
+    "formatting": {"status": "planned", "justification": "A formatting gate is not yet present in the SDK workflow."},
+    "secret-detection": {"status": "required", "command": "gitleaks git --redact", "evidence": [".github/workflows/ci.yml"]},
+    "sast": {"status": "required", "command": "python -m bandit -r src -q -lll -iii", "evidence": ["src", ".github/workflows/ci.yml"]},
+    "sbom": {"status": "required", "command": "syft dir:. -o cyclonedx-json=artifacts/bonfim-sdk.cdx.json", "evidence": ["artifacts/bonfim-sdk.cdx.json", ".github/workflows/ci.yml"]},
+    "license-verification": {"status": "planned", "justification": "Automated dependency license verification is not yet configured."}
+  },
+  "release": {"certification": "human-review-required", "humanReviewStatus": "pending", "approvalStatus": "Proposta", "releaseDecision": "blocked"}
+}

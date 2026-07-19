@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any, cast
 from uuid import uuid4
-
 
 CONFIDENCE_LEVELS = frozenset({"High", "Medium", "Low", "Unknown"})
 GATE_STATES = frozenset({"Pass", "Fail", "Not Assessed", "Not Applicable"})
@@ -27,11 +28,133 @@ FAILURE_CATEGORIES = frozenset(
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _freeze_mapping(value: Mapping[str, Any]) -> Mapping[str, Any]:
     return MappingProxyType(dict(value))
+
+
+class Confidence(str, Enum):
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
+    UNKNOWN = "Unknown"
+
+
+@dataclass(frozen=True)
+class Finding:
+    identifier: str
+    title: str
+    description: str
+    severity: str = "Informational"
+    evidence_ids: tuple[str, ...] = ()
+    requirement_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Risk:
+    identifier: str
+    statement: str
+    likelihood: str = "Unknown"
+    impact: str = "Unknown"
+    treatment: str = "Human review required"
+    owner: str = "Unknown"
+
+
+@dataclass(frozen=True)
+class Limitation:
+    identifier: str
+    description: str
+    impact: str = "Unknown"
+
+
+@dataclass(frozen=True)
+class Recommendation:
+    identifier: str
+    statement: str
+    priority: str = "Medium"
+    rationale: str = "Not established"
+
+
+@dataclass(frozen=True)
+class Decision:
+    identifier: str
+    statement: str
+    status: str = "Proposta"
+    rationale: str = "Human decision required"
+    decided_by: str = "Not decided"
+    decided_at: str = "Not decided"
+
+
+@dataclass(frozen=True)
+class Traceability:
+    component_id: str
+    component_version: str
+    execution_id: str
+    origin: str
+    parent_ids: tuple[str, ...] = ()
+    requirement_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Requirement:
+    identifier: str
+    statement: str
+    source: str
+    mandatory: bool = True
+
+
+@dataclass(frozen=True)
+class Observation:
+    identifier: str
+    statement: str
+    source: str
+    observed_at: str = field(default_factory=utc_now)
+    evidence_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class OutputContract:
+    """Shared ecosystem output for Agents, Automations and Framework operations."""
+
+    component_id: str
+    component_type: str
+    component_version: str
+    status: str
+    summary: str
+    confidence: Confidence = Confidence.UNKNOWN
+    findings: tuple[Finding, ...] = ()
+    evidence: tuple[Evidence, ...] = ()
+    risks: tuple[Risk, ...] = ()
+    limitations: tuple[Limitation, ...] = ()
+    recommendations: tuple[Recommendation, ...] = ()
+    decisions: tuple[Decision, ...] = ()
+    observations: tuple[Observation, ...] = ()
+    requirements: tuple[Requirement, ...] = ()
+    trace: Traceability | None = None
+    started_at: str = field(default_factory=utc_now)
+    completed_at: str = field(default_factory=utc_now)
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    error: str | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.confidence, str):
+            object.__setattr__(self, "confidence", Confidence(self.confidence))
+        if self.status not in {"Succeeded", "Failed", "Partial", "Waiting for Human Review"}:
+            raise ValueError(f"unsupported output status: {self.status}")
+        for name in ("component_id", "component_type", "component_version", "summary"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a non-empty string")
+        object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
+
+    def to_dict(self) -> dict[str, Any]:
+        from .utils import serialize
+
+        result = cast(dict[str, Any], serialize(self))
+        result["decision_status"] = "Human decision required"
+        return result
 
 
 @dataclass(frozen=True)
@@ -76,9 +199,7 @@ class Evidence:
             raise ValueError(f"unsupported confidence: {self.confidence}")
         for field_name in ("limitations", "traceability"):
             value = getattr(self, field_name)
-            if not isinstance(value, tuple) or not all(
-                isinstance(item, str) and item.strip() for item in value
-            ):
+            if not isinstance(value, tuple) or not all(isinstance(item, str) and item.strip() for item in value):
                 raise ValueError(f"evidence.{field_name} must contain non-empty strings")
 
 
@@ -120,15 +241,11 @@ class SkillOutput:
             raise ValueError(f"unsupported confidence: {self.confidence}")
         if not self.confidence_justification.strip():
             raise ValueError("confidence_justification must not be empty")
-        if not isinstance(self.evidence, tuple) or not all(
-            isinstance(item, Evidence) for item in self.evidence
-        ):
+        if not isinstance(self.evidence, tuple) or not all(isinstance(item, Evidence) for item in self.evidence):
             raise ValueError("evidence must be a tuple of Evidence records")
         for field_name in ("findings", "risks", "limitations", "follow_up_actions"):
             value = getattr(self, field_name)
-            if not isinstance(value, tuple) or not all(
-                isinstance(item, str) and item.strip() for item in value
-            ):
+            if not isinstance(value, tuple) or not all(isinstance(item, str) and item.strip() for item in value):
                 raise ValueError(f"{field_name} must be a tuple of non-empty strings")
         object.__setattr__(self, "data", _freeze_mapping(self.data))
 
@@ -261,9 +378,7 @@ class SkillResult:
                 {"name": gate.name, "state": gate.state, "justification": gate.justification}
                 for gate in self.quality_gates
             ],
-            "provenance": {
-                name: getattr(self.provenance, name) for name in self.provenance.__dataclass_fields__
-            },
+            "provenance": {name: getattr(self.provenance, name) for name in self.provenance.__dataclass_fields__},
             "data": dict(self.data),
             "failure": None
             if self.failure is None
