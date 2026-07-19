@@ -8,7 +8,7 @@
 | Evidence level | Level D — Internal Proposal or Convention |
 | Assessment status | Implementado |
 | Publication recommendation | Proposta |
-| Date | 2026-07-15 |
+| Date | 2026-07-19 |
 | Origin | Founder-requested portfolio readiness audit and direct local validation |
 | Justification | Record cleanup and reproducibility evidence without treating implementation as publication approval or production readiness |
 
@@ -50,24 +50,22 @@ them because the canonical files contained the current 0.2.0 implementation.
 | Repository license | Pass with legal-review limitation | Founder approved Apache-2.0 in `BL-DEC-LIC-001`; the official license text, `NOTICE`, package metadata, and built-wheel contents were verified |
 | BQA baseline | Requires Revision | SAST, SBOM, and secret scanning are configured; performance, formatting, automated license verification, approval, and human review remain open |
 | BRE baseline | Requires Revision | Checksums, compatibility policy, evidence package, migration guide, release notes, SBOM, approval, human review, and public-release authorization remain open |
-| GitHub state and CI | Not verified | No `origin` remote is configured and available GitHub CLI authentication was invalid |
+| GitHub state and CI | Pass for private candidate | Private repository `a-bonfim-tech/bonfim-sdk`, default branch `main`, and draft PR #1 verified live. Run `29693222986` passed tests on Python 3.11/3.14, coverage/static quality/SAST, full-history Gitleaks, CycloneDX SBOM, and BQA/BRE evidence |
 
 ## P0 decision
 
-**Result: Cleanup and local quality validation passed; repository publication P0
-remains blocked.**
+**Result: Cleanup, local validation, private candidate publication, and hosted CI
+passed; public release remains blocked.**
 
 The implementation is locally reproducible and has strong test, coverage, lint,
-typing, and secret-scan evidence. Publication remains blocked by:
+typing, and secret-scan evidence. Public release remains blocked by:
 
-1. uncommitted candidate content and lack of an intentional candidate commit;
-2. no configured remote or verified live CI;
-3. BQA/BRE security, supply-chain, release, and human-review gaps;
-4. pending full legal/IP and public-disclosure review;
-5. pending Founder approval of the exact publication scope.
+1. BQA/BRE release and human-review gaps;
+2. pending full legal/IP and public-disclosure review;
+3. pending Founder approval of merge, public visibility, tagging, and release.
 
-No commit, publication, push, remote mutation, approval, or release authorization
-was performed by this assessment.
+The private candidate is available in draft PR #1. This assessment does not
+authorize merge, public visibility, tagging, or release.
 
 ## Security-control implementation update
 
@@ -85,5 +83,7 @@ Local Gitleaks execution passed. Bandit 1.9.4 executed against `src` with the
 CI blocking thresholds and returned no high-severity, high-confidence finding.
 Syft 1.48.0 generated `artifacts/bonfim-sdk.cdx.json` from a cache-free copy;
 the document is valid CycloneDX 1.7, identifies `bonfim-sdk`, and contains eight
-components. Remote CI execution remains required to confirm the hosted-runner
-path and artifact retention behavior.
+components. Hosted run `29693222986` subsequently verified all declared jobs,
+including SBOM generation and evidence upload. The first Gitleaks run exposed a
+read-only token-permission defect; commit `dfcd0c5` added only
+`pull-requests: read`, after which full-history secret scanning passed.
