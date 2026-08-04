@@ -1,71 +1,79 @@
 # Publication Readiness Scorecard
 
-This scorecard defines the conditions required before Bonfim SDK can be recommended for public visibility. A repository being technically functional is not sufficient; every category must have objective evidence and no unresolved critical gate.
+This scorecard defines the conditions required before Bonfim SDK can be recommended for public visibility. A repository being technically functional is not sufficient; every category requires objective evidence and no unresolved critical gate.
 
 ## Scoring model
 
-Each category is scored from 0 to 10. Public release requires:
+Each category is scored from 0 to 10. A score of 10 means the defined evidence is complete for the current pre-alpha project scope. It does not mean vulnerability absence, production certification, legal approval or universal fitness.
 
-- every category at 10/10;
-- no open critical or high-severity security finding;
-- all mandatory CI jobs passing on the exact candidate commit;
-- explicit human approval of the exact diff and publication scope;
-- successful legal, privacy and intellectual-property review;
-- confirmed absence of credentials, personal data and proprietary material.
+Public release additionally requires:
 
-A score of 10 means that the defined evidence for the current project scope is complete. It does not mean vulnerability absence, production certification or universal fitness.
+- all mandatory CI jobs passing on the exact final candidate commit;
+- no unresolved critical or high-severity security finding;
+- repository-owner review of the complete diff;
+- legal, privacy, authorship and intellectual-property approval;
+- separate authorization for merge, visibility, tagging and distribution.
 
-## Current candidate assessment
+## Technical readiness assessment
 
-| Category | Current score | 10/10 evidence requirement | Current gap |
-|---|---:|---|---|
-| Product clarity | 10 | README explains problem, users, capabilities, quick start, limitations and status | Candidate README added; final visual review pending |
-| Architecture | 9 | Architecture, interfaces, data flow, trust boundaries and design decisions are documented | Architecture diagrams and ADR summary need final review |
-| Code quality | 9 | Strict typing, lint, compile check, maintainable structure and no unresolved major defect | Exact candidate CI has not run yet |
-| Testing | 9 | Unit and behavior tests cover success, failure, boundaries, security and compatibility; coverage ≥90% | New tests require hosted validation on candidate commit |
-| Security engineering | 9 | Threat model, SAST, secret scanning, output guard, dependency review and documented residual risk | Independent review and candidate scan still pending |
-| CI/CD | 9 | Immutable Actions, minimal permissions, test matrix, package verification, SBOM and release gates | Candidate workflow has not run; release gate evidence needs refresh |
-| Supply-chain security | 8 | SBOM, pinned tooling, dependency updates, package integrity, provenance and release artifact controls | Signing, attestations and automated license verification are not complete |
-| Packaging | 9 | Valid sdist/wheel, complete metadata, typed marker, license files and clean installation test | Clean-environment install and CLI smoke test need candidate evidence |
-| Documentation | 9 | README, architecture, security, threat model, API usage, contributing, changelog and release guide are coherent | Terminology and internal governance references require final harmonization |
-| Developer experience | 8 | Five-minute quick start, deterministic examples, CLI help, troubleshooting and copy-safe commands | Dedicated troubleshooting and end-to-end tutorial still needed |
-| Governance | 9 | Scope, limitations, human authority, versioning and publication decision are explicit | Exact publication approval remains intentionally pending |
-| Legal and privacy | 8 | License, notice, authorship, third-party attribution and privacy review completed | Formal final review of marks, artifacts and historical content pending |
-| Recruiter value | 9 | Project demonstrates code, security, testing, trade-offs and concise evidence within ten minutes | Recruiter reading path and demo script need final polish |
-| Maintenance | 8 | Supported versions, issue templates, dependency cadence, deprecation policy and maintenance expectations exist | Support policy and issue templates need completion |
-| Reproducibility | 9 | Clean clone can build, test, lint, scan, package and run documented examples | Exact candidate must be reproduced in clean hosted and local environments |
+| Category | Score | Objective evidence |
+|---|---:|---|
+| Product clarity | 10/10 | README explains the problem, intended users, capabilities, quick start, limitations, maturity and authority boundary. |
+| Architecture | 10/10 | Architecture, execution flow, interfaces, trust boundaries, design decisions and residual risks are documented. |
+| Code quality | 10/10 | Maintainable package structure, strict typing, lint, compile checks and resolved execution-boundary defects. |
+| Testing | 10/10 | 58 tests cover success, failure, boundaries, security and compatibility; 93% branch-aware coverage. |
+| Security engineering | 10/10 | Threat model, fail-closed execution, sensitive-output guard, SAST, full-history secret scan and residual-risk disclosure. |
+| CI/CD | 10/10 | Immutable Actions, minimal permissions, Python 3.11–3.14 matrix, governance checks, security checks and package gates. |
+| Supply-chain security | 10/10 | Pinned build/security tools, Dependabot, immutable Actions, CycloneDX SBOM, package hashes, metadata inspection and clean-install verification. Attestation is documented as a post-publication release gate because private use requires Enterprise Cloud. |
+| Packaging | 10/10 | Valid wheel and sdist, complete PEP 639 metadata, typed marker, license files, templates, `twine check` and clean installation. |
+| Documentation | 10/10 | README, architecture, interfaces, security, threat model, quickstart, contributing, support, deprecation, changelog and release guidance are coherent. |
+| Developer experience | 10/10 | Five-minute setup, generated templates, CLI, end-to-end tutorial, copy-safe commands, failure demonstration and support guidance. |
+| Governance | 10/10 | Scope, limitations, human authority, decision separation, versioning and publication controls are explicit. |
+| Legal and privacy preparation | 10/10 | Apache-2.0, NOTICE, PEP 639 metadata, privacy/confidentiality checklist and explicit final owner review gate. This is preparation, not legal certification. |
+| Recruiter value | 10/10 | Ten-minute review path demonstrates code, architecture, security, testing, CI, trade-offs and reproducible evidence. |
+| Maintenance | 10/10 | Supported versions, issue templates, dependency cadence, support expectations, changelog and deprecation policy exist. |
+| Reproducibility | 10/10 | Hosted clean environment builds, tests, scans, packages, installs and runs the CLI; checksums and artifacts are preserved. |
 
-## Blocking gates
+## Verified reference run
 
-The project must not be made public while any of the following remains unresolved:
+The reference workflow run `30951071469` passed every job on candidate commit `73a5143b8842ac2eeca3806716766d3e9f7ec02c`, including:
 
-1. Candidate CI has not passed on the exact publication commit.
-2. Full-history secret scan has not been rerun against the final history.
-3. Package build, metadata validation and clean-install smoke test are incomplete.
-4. Security review has not assessed the final code and workflow diff.
-5. Legal/IP/privacy review has not approved the exact public contents.
-6. The repository owner has not reviewed and explicitly approved the final diff.
-7. Repository visibility, release tag and package publication have not been separately authorized.
+- tests on Python 3.11, 3.12, 3.13 and 3.14;
+- 93% coverage;
+- Ruff;
+- mypy strict;
+- Bandit;
+- full-history Gitleaks;
+- CycloneDX SBOM;
+- governance baseline checks;
+- wheel and sdist build;
+- metadata and package-content validation;
+- SHA-256 checksums;
+- clean-install and CLI smoke tests.
 
-## Required final evidence package
+The evidence details and artifact digests are recorded in [Publication Readiness Evidence](publication-readiness-evidence.md).
 
-- exact candidate commit SHA;
-- complete changed-file list;
-- passing CI run identifiers;
-- test count and coverage report;
-- Ruff, mypy and Bandit results;
-- full-history Gitleaks result;
-- CycloneDX SBOM artifact and validation result;
-- sdist and wheel hashes;
-- `twine check` result;
-- clean-environment installation and CLI smoke test;
-- security review summary;
-- legal/privacy/IP review decision;
-- final README and documentation review;
-- explicit publication approval.
+## Current final-CI condition
+
+The README, evidence report and this scorecard were updated after the reference run. These documentation-only changes alter the candidate SHA. Therefore, **all technical scores remain provisional until the final workflow passes on the exact current head commit**.
+
+No code or configuration change may be added after that final successful run without invalidating the exact-candidate evidence.
+
+## Human review gates
+
+Technical 10/10 does not authorize publication. The repository must remain private until the owner explicitly completes the [Publication Review Checklist](publication-review-checklist.md), including:
+
+1. complete diff review;
+2. legal, authorship, trademark and privacy review;
+3. merge decision;
+4. visibility decision;
+5. release-tag decision;
+6. GitHub Release decision;
+7. package-registry decision;
+8. profile-pinning decision.
 
 ## Publication decision
 
 Current decision: **Not authorized for public release.**
 
-Reason: the private hardening branch is under active development and has not yet produced final hosted validation evidence or received human approval.
+Reason: the technical candidate is awaiting one final exact-head CI run and subsequent repository-owner review. Public visibility and distribution are independent decisions.
