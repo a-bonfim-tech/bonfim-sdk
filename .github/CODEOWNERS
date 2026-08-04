@@ -1,0 +1,13 @@
+# Default ownership for all repository content.
+* @a-bonfim-tech
+
+# Security-sensitive and release-sensitive areas.
+/.github/workflows/ @a-bonfim-tech
+/SECURITY.md @a-bonfim-tech
+/NOTICE @a-bonfim-tech
+/LICENSE @a-bonfim-tech
+/pyproject.toml @a-bonfim-tech
+/src/bonfim/security.py @a-bonfim-tech
+/src/bonfim/agent/ @a-bonfim-tech
+/src/bonfim/automation/ @a-bonfim-tech
+/release/ @a-bonfim-tech
