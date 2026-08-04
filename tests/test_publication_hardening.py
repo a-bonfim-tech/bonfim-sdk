@@ -78,7 +78,8 @@ class PublicationHardeningTests(unittest.TestCase):
 
         self.assertEqual(result.status, "Failed")
         self.assertIsNone(recording.executed_inputs)
-        self.assertNotIn("[]", str(result.to_dict()))
+        self.assertEqual(result.error, "AutomationExecutionError")
+        self.assertEqual(result.limitations[0].description, "inputs for step record must be a mapping")
 
     def test_rollback_failure_is_explicit_and_details_are_withheld(self) -> None:
         rollback_failure = RollbackFailureStep()
@@ -135,7 +136,11 @@ class PublicationHardeningTests(unittest.TestCase):
             {"skill_inputs": {"ALLOWED-001": []}}, parallel=False
         )
         self.assertEqual(result.status, "Failed")
-        self.assertNotIn("[]", str(result.to_dict()))
+        self.assertEqual(result.error, "AgentExecutionError")
+        self.assertEqual(
+            result.limitations[0].description,
+            "TypeError; input or registry contract was rejected.",
+        )
 
     def test_agent_withholds_unexpected_component_exception_details(self) -> None:
         class ExampleAgent(Agent):
