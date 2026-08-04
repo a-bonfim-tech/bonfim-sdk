@@ -134,6 +134,10 @@ jobs:
     name: Build, install and verify package
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -180,6 +184,11 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS
           sha256sum --check SHA256SUMS
+      - name: Generate build provenance attestation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-checksums: dist/SHA256SUMS
       - name: Install wheel in a clean virtual environment
         shell: bash
         run: |
