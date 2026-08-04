@@ -93,13 +93,20 @@ class Automation(GovernedComponent, Executable):
 
         observations: list[Observation] = []
         limitations: list[Limitation] = []
-        completed: list[tuple[WorkflowStep, Any]] = []
+        completed: list[tuple[WorkflowStep, Mapping[str, Any], Any]] = []
         failed_step: str | None = None
         step_input_map = inputs.get("steps", {})
         if not isinstance(step_input_map, Mapping):
             return self._failed(started, "Workflow step inputs are invalid.", ("steps must be a mapping",))
+
         for sequence, step in enumerate(self.workflow, start=1):
             step_inputs = step_input_map.get(step.step_id, inputs)
+            if not isinstance(step_inputs, Mapping):
+                return self._failed(
+                    started,
+                    "Workflow step inputs are invalid.",
+                    (f"inputs for step {step.step_id} must be a mapping",),
+                )
             result: Any = None
             last_exception: Exception | None = None
             for attempt in range(self.max_retries + 1):
@@ -114,11 +121,11 @@ class Automation(GovernedComponent, Executable):
                             self.automation_id,
                         )
                     )
-                    completed.append((step, result))
+                    completed.append((step, step_inputs, result))
                     last_exception = None
                     break
-                except Exception as exc:
-                    last_exception = exc
+                except Exception:
+                    last_exception = RuntimeError("step execution failed")
                     observations.append(
                         Observation(
                             f"OBS-{sequence:03d}-{attempt + 1}",
@@ -141,7 +148,7 @@ class Automation(GovernedComponent, Executable):
         rollback_errors: list[str] = []
         rolled_back: list[str] = []
         if failed_step and self.rollback_on_failure:
-            for step, result in reversed(completed):
+            for step, step_inputs, result in reversed(completed):
                 rollback = getattr(step, "rollback", None)
                 if not callable(rollback):
                     limitations.append(
@@ -149,19 +156,25 @@ class Automation(GovernedComponent, Executable):
                     )
                     continue
                 try:
-                    rollback(inputs, result)
+                    rollback(step_inputs, result)
                     rolled_back.append(step.step_id)
                 except Exception:
                     rollback_errors.append(step.step_id)
+                    limitations.append(
+                        Limitation(
+                            f"ROLLBACK-ERROR-{step.step_id}",
+                            f"Rollback for step {step.step_id} failed; details were withheld.",
+                        )
+                    )
 
-        status = "Failed" if failed_step else "Waiting for Human Review"
+        status = "Failed" if failed_step or rollback_errors else "Waiting for Human Review"
         contract = OutputContract(
             component_id=self.automation_id,
             component_type="Automation",
             component_version=self.version,
             status=status,
             summary=f"Automation completed {len(completed)} of {len(self.workflow)} workflow step(s).",
-            confidence=Confidence.UNKNOWN if failed_step else Confidence.HIGH,
+            confidence=Confidence.UNKNOWN if status == "Failed" else Confidence.HIGH,
             limitations=tuple(limitations),
             recommendations=(
                 Recommendation(
@@ -175,7 +188,7 @@ class Automation(GovernedComponent, Executable):
             metadata={
                 "trigger": trigger,
                 "requested_by": requested_by,
-                "completed_steps": [step.step_id for step, _ in completed],
+                "completed_steps": [step.step_id for step, _, _ in completed],
                 "failed_step": failed_step,
                 "rolled_back_steps": rolled_back,
                 "rollback_errors": rollback_errors,
