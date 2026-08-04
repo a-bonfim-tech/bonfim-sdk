@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from typing import Any
@@ -70,10 +70,14 @@ class Agent(GovernedComponent, Executable):
         requested = inputs.get("skill_ids")
         if requested is None:
             return self.skill_ids
+        if isinstance(requested, (str, bytes)) or not isinstance(requested, Sequence):
+            raise TypeError("skill_ids must be a sequence of identifiers")
         requested_ids = tuple(requested)
+        if not all(isinstance(identifier, str) and identifier.strip() for identifier in requested_ids):
+            raise ValueError("skill_ids must contain non-empty string identifiers")
         unauthorized = tuple(identifier for identifier in requested_ids if identifier not in self.skill_ids)
         if unauthorized:
-            raise ValueError("Agent cannot select undeclared Skills: " + ", ".join(unauthorized))
+            raise ValueError("Agent cannot select one or more undeclared Skills")
         return requested_ids
 
     def run(
@@ -110,7 +114,17 @@ class Agent(GovernedComponent, Executable):
             use_parallel = self.allow_parallel if parallel is None else bool(parallel)
             results = self._execute_plan(selected, skill_inputs, provenance, requested_by, use_parallel)
         except (KeyError, TypeError, ValueError) as exc:
-            return self._failed(started, "Agent orchestration failed safely.", (f"{type(exc).__name__}: {exc}",))
+            return self._failed(
+                started,
+                "Agent orchestration failed safely.",
+                (f"{type(exc).__name__}; input or registry contract was rejected.",),
+            )
+        except Exception as exc:
+            return self._failed(
+                started,
+                "Agent orchestration failed safely.",
+                (f"Unhandled {type(exc).__name__}; details withheld.",),
+            )
 
         finding_values = tuple((skill_id, text) for skill_id, result in results for text in result.findings)
         risk_values = tuple(text for _, result in results for text in result.risks)
@@ -169,6 +183,8 @@ class Agent(GovernedComponent, Executable):
     ) -> tuple[tuple[str, Any], ...]:
         def execute_one(identifier: str) -> Any:
             inputs = skill_inputs.get(identifier, {})
+            if not isinstance(inputs, Mapping):
+                raise TypeError("individual Skill inputs must be a mapping")
             return self.registry.get(identifier).execute(inputs, provenance=provenance, requested_by=requested_by)
 
         if not parallel or len(selected) == 1:

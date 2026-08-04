@@ -93,6 +93,8 @@ class Framework(GovernedComponent, Executable):
     def execute(self, inputs: Mapping[str, Any], **kwargs: Any) -> OutputContract:
         started = utc_now()
         errors = self.validate()
+        if not isinstance(inputs, Mapping):
+            errors = (*errors, "inputs must be a mapping")
         if errors:
             return OutputContract(
                 component_id=self.framework_id or type(self).__name__,

@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a bounded, testable SDK improvement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: Describe the developer or security problem without prescribing a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Define observable acceptance criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and out of scope
+      description: State explicit boundaries and external effects.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security, privacy and trust-boundary impact
+      description: Identify new inputs, outputs, privileges, dependencies, persistence or network behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration impact
+      description: Explain public API, CLI and serialized-contract impact.
+    validations:
+      required: true
+  - type: checkboxes
+    id: authority
+    attributes:
+      label: Governance confirmation
+      options:
+        - label: The proposal does not assume merge, release, deployment or external-action authority.
+          required: true

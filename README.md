@@ -1,76 +1,95 @@
-# Bonfim SDK — BSD-001
+# Bonfim SDK
 
-Reusable, governed Python infrastructure for Bonfim Frameworks, Skills, Agents and Automations.
+**A governed Python SDK for building auditable security skills, AI agents and automations with validation, traceability, explicit limitations and human review.**
 
-> Category C — Architectural Proposals · Evidence Level D · Status: `Proposta` · Artifact state: `Implementado` · Origin: Founder instruction dated 2026-07-15.
+[![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Pre--Alpha-orange)](CHANGELOG.md)
 
-Licensed under the [Apache License 2.0](LICENSE). Product names and marks remain
-subject to the trademark limitation recorded in [NOTICE](NOTICE).
+Bonfim SDK provides reusable infrastructure for developers who need AI-assisted or security-oriented components to produce structured, reviewable and serializable results without silently claiming authority, compliance or certainty.
 
-## Objective
+The SDK supplies the governance and execution pipeline. A component author implements only the domain-specific behavior.
 
-BSD-001 turns the Engineering Runtime contracts into a developer platform. A component author implements domain behavior while the SDK supplies validation, execution, traceability, governance metadata, output construction, registration and classified failure handling.
+## Why this project exists
 
-```python
-from bonfim import Skill, SkillContext, SkillOutput
+AI agents and security automations often fail in predictable ways:
 
+- inputs are accepted without validation;
+- evidence provenance is lost;
+- confidence is asserted without justification;
+- sensitive output is returned accidentally;
+- failures expose implementation details;
+- automated results are treated as final decisions;
+- plugin discovery expands the trust boundary without control.
 
-class SecurityEvidenceCollector(Skill):
-    skill_id = "SEC-EVD-001"
-    name = "Security Evidence Collector"
-    version = "0.1.0"
-    mission = "Package authorized artifacts as evidence."
-    scope = ("Evidence packaging",)
-    out_of_scope = ("Certification", "Remediation")
-    activation_conditions = ("Explicit evidence request",)
-    required_inputs = ("artifacts",)
+Bonfim SDK addresses these problems through explicit contracts and fail-closed behavior.
 
-    def perform(self, context: SkillContext) -> SkillOutput:
-        return self.output(
-            f"Received {len(context.inputs['artifacts'])} artifact(s).",
-            limitations=("Authenticity was not independently validated.",),
-            confidence="Low",
-            confidence_justification="Only caller-supplied artifacts were observed.",
-            final_verdict="Review Required",
-        )
+## What it demonstrates
 
+- Python package and CLI design
+- governed component interfaces
+- immutable input and provenance models
+- deterministic registries and allowlisted plugin discovery
+- bounded agent parallelism
+- retry and rollback-aware automation workflows
+- secret-like output blocking
+- structured evidence, findings, risks and limitations
+- human-review requirements
+- strict typing, linting, SAST, tests and coverage gates
+- full-history secret scanning and CycloneDX SBOM generation
+- wheel and source-distribution validation with clean-install smoke testing
 
-collector = SecurityEvidenceCollector()
-result = collector.run({"artifacts": ["test.log"]})
-print(result.to_dict())
-```
+## Verified candidate evidence
 
-The author does not implement registry wiring, provenance degradation, quality gates, secret-output blocking, timestamps, safe failures or serialization.
+The private publication candidate has been validated on its exact commit by GitHub Actions with:
 
-## Architecture
+- 58 passing tests on Python 3.11, 3.12, 3.13 and 3.14;
+- 93% branch-aware coverage across 958 statements and 188 branches;
+- Ruff with all checks passing;
+- mypy strict with no issues across 27 source files;
+- Bandit with no finding at the configured high-severity/high-confidence blocking threshold;
+- full-history Gitleaks scanning;
+- CycloneDX SBOM generation;
+- governance baseline validation;
+- wheel and source-distribution build;
+- `twine check` validation;
+- package-content and metadata validation;
+- SHA-256 checksum generation and verification;
+- clean virtual-environment installation;
+- installed CLI and package-resource smoke tests.
+
+See [Publication Readiness Evidence](docs/publication-readiness-evidence.md) and [Publication Review Checklist](docs/publication-review-checklist.md).
+
+## Architecture at a glance
 
 ```text
-Developer component
-       │
-       ├── Framework ── load · validate · register · dependencies
-       ├── Skill ────── validate · perform · findings · confidence · output
-       ├── Agent ────── select Skills · bounded parallelism · aggregate
-       └── Automation ─ trigger · workflow · retry · rollback · monitor
-               │
-               ▼
-Executable · Validatable · Traceable · Governable · Versionable · Documentable
-               │
-               ▼
-Shared models + central registries + security boundary + OutputContract
+Domain component
+      │
+      ├── Skill ─────── validate → execute → inspect → quality gates → result
+      ├── Agent ─────── select allowlisted Skills → bounded execution → aggregate
+      ├── Automation ── validate trigger → execute steps → retry → rollback → report
+      └── Framework ─── load → validate → register → resolve dependencies
+      │
+      ▼
+Governed output
+      ├── traceability and provenance
+      ├── evidence and findings
+      ├── risks and limitations
+      ├── confidence with justification
+      ├── security inspection
+      └── explicit human decision requirement
 ```
 
-All base components implement the six formal interfaces. Imported valid subclasses register automatically. Installed package plugins are loaded only through an explicitly allowlisted entry-point discovery call.
+See [Architecture](docs/architecture.md), [Security Model](docs/security.md) and [Threat Model](docs/threat-model.md).
 
-## Dependencies
+## Quick start
 
-- Python 3.11 or newer.
-- Python standard library only at runtime.
-- `setuptools` for package construction.
-- Optional pinned development tools: Coverage, Ruff and mypy.
+### Requirements
 
-No network service, database, dynamic filesystem scan or runtime dependency on `bonfim-engineering-runtime` is required.
+- Python 3.11 through 3.14
+- No runtime dependencies outside the Python standard library
 
-## Installation
+### Installation for development
 
 ```bash
 python3 -m venv .venv
@@ -79,40 +98,70 @@ python -m pip install -e '.[dev]'
 bonfim doctor
 ```
 
-## Formal interfaces
+### Create a governed Skill
 
-- `Executable`
-- `Validatable`
-- `Traceable`
-- `Governable`
-- `Versionable`
-- `Documentable`
-
-## Shared models
-
-`Finding`, `Evidence`, `Risk`, `Limitation`, `Recommendation`, `Decision`, `Confidence`, `Traceability`, `Requirement`, `Observation` and `OutputContract` are exported directly from `bonfim` and through `bonfim.schemas`.
-
-## Central registries
-
-```python
-from bonfim import skill_registry
-
-assert "SEC-EVD-001" in skill_registry.identifiers()
-result = skill_registry.get("SEC-EVD-001").run({"artifacts": []})
+```bash
+bonfim new skill SecurityEvidenceCollector \
+  --id SEC-EVD-001 \
+  --directory src/my_project
 ```
 
-Available registries:
-
-- `SkillRegistry` / `skill_registry`
-- `AgentRegistry` / `agent_registry`
-- `AutomationRegistry` / `automation_registry`
-- `FrameworkRegistry` / `framework_registry`
-
-Entry-point discovery is opt-in and allowlisted:
+### Minimal example
 
 ```python
-skill_registry.discover("bonfim.skills", allowlist=("approved-package-skill",))
+from bonfim import Skill, SkillContext, SkillOutput
+
+
+class SecurityEvidenceCollector(Skill):
+    skill_id = "SEC-EVD-001"
+    name = "Security Evidence Collector"
+    version = "0.2.0"
+    mission = "Package caller-supplied artifacts for human review."
+    scope = ("Evidence packaging",)
+    out_of_scope = ("Certification", "Remediation")
+    activation_conditions = ("Explicit evidence request",)
+    required_inputs = ("artifacts",)
+
+    def perform(self, context: SkillContext) -> SkillOutput:
+        artifacts = context.inputs["artifacts"]
+        return self.output(
+            f"Received {len(artifacts)} artifact(s).",
+            limitations=("Artifact authenticity was not independently validated.",),
+            confidence="Low",
+            confidence_justification="Only caller-supplied artifacts were observed.",
+            final_verdict="Review Required",
+        )
+
+
+result = SecurityEvidenceCollector().run({"artifacts": ["test.log"]})
+print(result.to_dict())
 ```
+
+The execution pipeline validates the declaration and inputs, creates traceability metadata, executes the component, blocks secret-like output, evaluates quality gates and returns a serializable result.
+
+For a complete reproducible workflow, follow the [End-to-End Quickstart](docs/quickstart-tutorial.md).
+
+## Core APIs
+
+### Skills
+
+Skills implement domain behavior through `perform(context)` while the SDK owns validation, execution, security inspection and output construction.
+
+### Agents
+
+Agents coordinate an explicit allowlist of Skills. Execution can be sequential or use bounded thread parallelism. Aggregated results preserve order and remain subject to human review.
+
+### Automations
+
+Automations run trigger-controlled workflows with bounded retries, monitoring and observable rollback attempts. Rollback receives the exact input mapping used by the completed step. It is compensating behavior, not a guarantee that external effects were reversed.
+
+### Frameworks
+
+Frameworks can be loaded from JSON, validated, registered and resolved through dependency order with cycle detection.
+
+### Registries
+
+Central registries support explicit imports and opt-in package entry-point discovery. Discovery requires a caller-provided allowlist.
 
 ## CLI
 
@@ -121,53 +170,36 @@ bonfim new skill SecurityEvidenceCollector --id SEC-EVD-001 --directory src/my_p
 bonfim new agent EvidenceAgent --id AGENT-EVD-001
 bonfim new automation EvidenceWorkflow --id AUT-EVD-001
 bonfim validate --module my_project.skills
-bonfim run SEC-EVD-001 --module my_project.skills --inputs '{"artifacts":[]}'
+bonfim run SEC-EVD-001 --module my_project.skills --inputs '{"artifacts": []}'
 bonfim doctor
 bonfim version
 ```
 
-`new framework` and `new specification` are also supported. Creation is exclusive: the CLI refuses to overwrite an existing component file.
+The CLI refuses to overwrite existing component files.
 
-## Official templates
+## Security model
 
-The canonical templates are in [`templates/`](templates/). Packaged copies drive the CLI so installed users receive the exact same contracts.
+Implemented safeguards include:
 
-No component should begin outside these templates without an explicitly recorded exception and review.
+- explicit imports and allowlisted entry points;
+- declaration and Semantic Versioning validation;
+- immutable top-level inputs and provenance mappings;
+- bounded Agent worker count;
+- bounded Automation retries;
+- secret-like output detection;
+- withheld unexpected exception details;
+- mandatory human-review statements;
+- Bandit SAST;
+- full-history Gitleaks scanning;
+- CycloneDX SBOM generation;
+- GitHub Actions pinned to immutable commit SHAs;
+- package hashes and clean-install validation.
 
-## Reference implementations
+Important boundary: imported Python components execute in-process and are trusted. The SDK is not a sandbox. Do not run untrusted third-party components.
 
-- [`SecurityEvidenceCollector`](examples/security_evidence_collector.py)
-- [`GitHubPRReadinessReviewer`](examples/github_pr_readiness_reviewer.py)
-- [`SecurityComplianceReviewer`](examples/security_compliance_reviewer.py)
-- [`GovernanceDocumentationGenerator`](examples/governance_documentation_generator.py)
+See [Security Model](docs/security.md), [Threat Model](docs/threat-model.md) and [Security Policy](SECURITY.md).
 
-All examples use caller-supplied or synthetic data, remain read-only and require human review.
-
-## Execution flow
-
-1. Import or explicitly load a component.
-2. Validate its declaration, Semantic Versioning value and input contract.
-3. Resolve it through the appropriate registry or instantiate it directly.
-4. Create immutable context and traceability metadata.
-5. Execute domain behavior in-process.
-6. Reject non-contract or secret-like output.
-7. Evaluate quality, evidence, confidence and limitations.
-8. Return a serializable governed result requiring human decision.
-
-## Security implications and trade-offs
-
-| Decision | Advantage | Residual risk |
-|---|---|---|
-| Imported-class auto-registration | Minimal developer wiring; deterministic | Importing code executes trusted package initialization |
-| Allowlisted entry points | Controlled ecosystem extension | Package authenticity/signature is not yet enforced |
-| In-process execution | Simple and fast | No sandbox for untrusted components |
-| Bounded thread parallelism | Lower latency with deterministic aggregation | Shared-process components can interfere with each other |
-| Explicit rollback | Observable compensating behavior | Rollback cannot guarantee reversal of every external effect |
-| Secret-pattern guard | Blocks common accidental disclosures | Not a complete DLP control |
-
-Never run untrusted third-party components in this baseline. Network exposure, workload identity, signed packages, capability tokens, process isolation and durable tamper-evident audit logs remain future security gates.
-
-## Validation
+## Quality and verification
 
 ```bash
 python -m compileall -q src examples tests
@@ -175,23 +207,54 @@ PYTHONPATH=src python -m coverage run -m unittest discover -s tests -v
 python -m coverage report --fail-under=90
 python -m ruff check src tests examples
 python -m mypy -p bonfim
+python -m bandit -r src -q -lll -iii
 ```
 
-## Documentation
+## Repository map
 
-- [Architecture](docs/architecture.md)
-- [Interfaces and models](docs/interfaces-and-models.md)
-- [CLI and templates](docs/cli-and-templates.md)
-- [Security model](docs/security.md)
-- [Traceability matrix](docs/traceability.md)
+```text
+src/bonfim/          SDK implementation
+tests/               contract and behavior tests
+examples/            read-only reference components
+templates/           component templates
+docs/                architecture, security and interface documentation
+tools/               quality and release verification
+quality/             quality baseline manifest
+release/             release baseline manifest
+.github/workflows/   CI and release gates
+```
+
+## Public interfaces
+
+- `Executable`
+- `Validatable`
+- `Traceable`
+- `Governable`
+- `Versionable`
+- `Documentable`
+
+Shared models include `Evidence`, `Finding`, `Risk`, `Limitation`, `Recommendation`, `Decision`, `Observation`, `Requirement`, `Provenance`, `Traceability` and `OutputContract`.
 
 ## Limitations
 
-- BSD-001 remains Category C / Level D / `Proposta` until explicit Founder approval.
-- Agent aggregation and Automation rollback are local infrastructure baselines, not operational authority.
-- No persistence, scheduling, remote execution, connector implementation or package signing is included.
+- Pre-alpha software; APIs may change.
+- No process or container isolation for component execution.
+- No network connector implementation.
+- No persistent scheduler, database or durable audit store.
+- No signed plugin verification or package attestation enforcement.
+- Secret-pattern inspection is not a complete DLP control.
 - Successful execution does not prove an external effect, compliance, certification or approval.
 
-## Versioning
+## Project status
 
-The BSD-001 implementation is version `0.2.0` and follows Semantic Versioning. See [CHANGELOG.md](CHANGELOG.md), [RELEASING.md](RELEASING.md) and [SECURITY.md](SECURITY.md).
+Current package version: `0.2.0`.
+
+Technical publication gates are validated on the private candidate. Repository visibility, merge, tagging, GitHub Release creation and package-registry publication remain separate human decisions.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports must follow [SECURITY.md](SECURITY.md).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). Product names and marks remain subject to the limitation recorded in [NOTICE](NOTICE).

@@ -5,24 +5,50 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bonfim-sdk"
 version = "0.2.0"
-description = "Governed SDK for reusable Bonfim Frameworks, Skills, Agents and Automations"
+description = "Governed Python SDK for auditable security skills, AI agents and automations"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Bonfim Labs"}]
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
+keywords = [
+  "ai-agents",
+  "automation",
+  "cybersecurity",
+  "governance",
+  "security-automation",
+  "traceability",
+]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Security",
+  "Typing :: Typed",
 ]
+
+[project.urls]
+Homepage = "https://github.com/a-bonfim-tech/bonfim-sdk"
+Documentation = "https://github.com/a-bonfim-tech/bonfim-sdk/tree/main/docs"
+Issues = "https://github.com/a-bonfim-tech/bonfim-sdk/issues"
+Security = "https://github.com/a-bonfim-tech/bonfim-sdk/security/policy"
+Source = "https://github.com/a-bonfim-tech/bonfim-sdk"
 
 [project.optional-dependencies]
 dev = [
   "bandit==1.9.4",
+  "build==1.3.0",
   "coverage==7.10.7",
   "mypy==1.18.2",
   "ruff==0.13.2",
+  "twine==6.2.0",
 ]
 
 [project.scripts]
