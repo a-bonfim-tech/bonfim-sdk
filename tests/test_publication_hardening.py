@@ -4,7 +4,7 @@ import unittest
 from collections.abc import Mapping
 from typing import Any
 
-from bonfim import Automation, Framework
+from bonfim import Agent, Automation, Framework, SkillRegistry
 
 
 class RecordingStep:
@@ -34,6 +34,16 @@ class RollbackFailureStep(RecordingStep):
 
     def rollback(self, inputs: Mapping[str, Any], result: Any) -> None:
         raise RuntimeError("rollback secret")
+
+
+class ExplodingComponent:
+    def execute(self, inputs: Mapping[str, Any], **kwargs: Any) -> Any:
+        raise RuntimeError("internal component secret")
+
+
+class ExplodingRegistry:
+    def get(self, identifier: str) -> ExplodingComponent:
+        return ExplodingComponent()
 
 
 class PublicationHardeningTests(unittest.TestCase):
@@ -99,6 +109,47 @@ class PublicationHardeningTests(unittest.TestCase):
         self.assertEqual(result.status, "Failed")
         self.assertEqual(result.error, "ValidationError")
         self.assertIn("inputs must be a mapping", result.limitations[0].description)
+
+    def test_agent_rejects_string_and_non_string_skill_selection(self) -> None:
+        class ExampleAgent(Agent):
+            agent_id = "TEST-PUB-AGENT-001"
+            name = "Selection Boundary Agent"
+            version = "1.0.0"
+            description = "Validate requested Skill identifiers."
+            skill_ids = ("ALLOWED-001",)
+
+        agent = ExampleAgent(SkillRegistry())
+        self.assertEqual(agent.run({"skill_ids": "ALLOWED-001"}).status, "Failed")
+        self.assertEqual(agent.run({"skill_ids": [1]}).status, "Failed")
+        self.assertEqual(agent.run({"skill_ids": ["UNDECLARED-001"]}).status, "Failed")
+
+    def test_agent_rejects_non_mapping_individual_skill_inputs(self) -> None:
+        class ExampleAgent(Agent):
+            agent_id = "TEST-PUB-AGENT-002"
+            name = "Skill Input Boundary Agent"
+            version = "1.0.0"
+            description = "Validate per-Skill input mappings."
+            skill_ids = ("ALLOWED-001",)
+
+        result = ExampleAgent(ExplodingRegistry()).run(
+            {"skill_inputs": {"ALLOWED-001": []}}, parallel=False
+        )
+        self.assertEqual(result.status, "Failed")
+        self.assertNotIn("[]", str(result.to_dict()))
+
+    def test_agent_withholds_unexpected_component_exception_details(self) -> None:
+        class ExampleAgent(Agent):
+            agent_id = "TEST-PUB-AGENT-003"
+            name = "Unexpected Failure Agent"
+            version = "1.0.0"
+            description = "Fail closed when a component raises unexpectedly."
+            skill_ids = ("ALLOWED-001",)
+
+        result = ExampleAgent(ExplodingRegistry()).run({}, parallel=True)
+        serialized = str(result.to_dict())
+        self.assertEqual(result.status, "Failed")
+        self.assertIn("details withheld", serialized)
+        self.assertNotIn("internal component secret", serialized)
 
 
 if __name__ == "__main__":
