@@ -2,7 +2,7 @@
 
 **A governed Python SDK for building auditable security skills, AI agents and automations with validation, traceability, explicit limitations and human review.**
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Pre--Alpha-orange)](CHANGELOG.md)
 
@@ -37,6 +37,28 @@ Bonfim SDK addresses these problems through explicit contracts and fail-closed b
 - human-review requirements
 - strict typing, linting, SAST, tests and coverage gates
 - full-history secret scanning and CycloneDX SBOM generation
+- wheel and source-distribution validation with clean-install smoke testing
+
+## Verified candidate evidence
+
+The private publication candidate has been validated on its exact commit by GitHub Actions with:
+
+- 58 passing tests on Python 3.11, 3.12, 3.13 and 3.14;
+- 93% branch-aware coverage across 958 statements and 188 branches;
+- Ruff with all checks passing;
+- mypy strict with no issues across 27 source files;
+- Bandit with no finding at the configured high-severity/high-confidence blocking threshold;
+- full-history Gitleaks scanning;
+- CycloneDX SBOM generation;
+- governance baseline validation;
+- wheel and source-distribution build;
+- `twine check` validation;
+- package-content and metadata validation;
+- SHA-256 checksum generation and verification;
+- clean virtual-environment installation;
+- installed CLI and package-resource smoke tests.
+
+See [Publication Readiness Evidence](docs/publication-readiness-evidence.md) and [Publication Review Checklist](docs/publication-review-checklist.md).
 
 ## Architecture at a glance
 
@@ -64,7 +86,7 @@ See [Architecture](docs/architecture.md), [Security Model](docs/security.md) and
 
 ### Requirements
 
-- Python 3.11 or newer
+- Python 3.11 through 3.14
 - No runtime dependencies outside the Python standard library
 
 ### Installation for development
@@ -117,6 +139,8 @@ print(result.to_dict())
 
 The execution pipeline validates the declaration and inputs, creates traceability metadata, executes the component, blocks secret-like output, evaluates quality gates and returns a serializable result.
 
+For a complete reproducible workflow, follow the [End-to-End Quickstart](docs/quickstart-tutorial.md).
+
 ## Core APIs
 
 ### Skills
@@ -129,7 +153,7 @@ Agents coordinate an explicit allowlist of Skills. Execution can be sequential o
 
 ### Automations
 
-Automations run trigger-controlled workflows with bounded retries, monitoring and observable rollback attempts. Rollback is treated as compensating behavior, not a guarantee that external effects were reversed.
+Automations run trigger-controlled workflows with bounded retries, monitoring and observable rollback attempts. Rollback receives the exact input mapping used by the completed step. It is compensating behavior, not a guarantee that external effects were reversed.
 
 ### Frameworks
 
@@ -168,7 +192,8 @@ Implemented safeguards include:
 - Bandit SAST;
 - full-history Gitleaks scanning;
 - CycloneDX SBOM generation;
-- GitHub Actions pinned to immutable commit SHAs.
+- GitHub Actions pinned to immutable commit SHAs;
+- package hashes and clean-install validation.
 
 Important boundary: imported Python components execute in-process and are trusted. The SDK is not a sandbox. Do not run untrusted third-party components.
 
@@ -184,18 +209,6 @@ python -m ruff check src tests examples
 python -m mypy -p bonfim
 python -m bandit -r src -q -lll -iii
 ```
-
-The private candidate baseline has previously demonstrated:
-
-- 51 passing tests;
-- 93% branch coverage;
-- strict mypy validation;
-- Ruff validation;
-- Bandit with no high-severity/high-confidence finding;
-- full-history Gitleaks scanning;
-- a valid CycloneDX SBOM.
-
-These results must be revalidated on the final publication candidate before release.
 
 ## Repository map
 
@@ -236,7 +249,7 @@ Shared models include `Evidence`, `Finding`, `Risk`, `Limitation`, `Recommendati
 
 Current package version: `0.2.0`.
 
-The repository remains a private publication candidate until security, legal, documentation and human-review gates are completed. Public visibility, tagging and release are separate decisions.
+Technical publication gates are validated on the private candidate. Repository visibility, merge, tagging, GitHub Release creation and package-registry publication remain separate human decisions.
 
 ## Contributing
 
