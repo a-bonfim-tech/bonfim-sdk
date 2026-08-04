@@ -2,6 +2,7 @@
 
 **A governed Python SDK for building auditable security skills, AI agents and automations with validation, traceability, explicit limitations and human review.**
 
+[![CI](https://github.com/a-bonfim-tech/bonfim-sdk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/a-bonfim-tech/bonfim-sdk/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Pre--Alpha-orange)](CHANGELOG.md)
@@ -38,10 +39,13 @@ Bonfim SDK addresses these problems through explicit contracts and fail-closed b
 - strict typing, linting, SAST, tests and coverage gates
 - full-history secret scanning and CycloneDX SBOM generation
 - wheel and source-distribution validation with clean-install smoke testing
+- public build provenance attestation for distribution checksums
 
-## Verified candidate evidence
+## Verified engineering evidence
 
-The private publication candidate has been validated on its exact commit by GitHub Actions with:
+The publication candidate passed all mandatory CI jobs on its exact reviewed commit and was subsequently integrated into the public `main` branch.
+
+Verified evidence includes:
 
 - 58 passing tests on Python 3.11, 3.12, 3.13 and 3.14;
 - 93% branch-aware coverage across 958 statements and 188 branches;
@@ -193,11 +197,21 @@ Implemented safeguards include:
 - full-history Gitleaks scanning;
 - CycloneDX SBOM generation;
 - GitHub Actions pinned to immutable commit SHAs;
-- package hashes and clean-install validation.
+- package hashes, clean-install validation and build provenance attestation.
 
 Important boundary: imported Python components execute in-process and are trusted. The SDK is not a sandbox. Do not run untrusted third-party components.
 
 See [Security Model](docs/security.md), [Threat Model](docs/threat-model.md) and [Security Policy](SECURITY.md).
+
+## Build provenance
+
+Build distributions generated from the public `main` branch receive GitHub artifact attestations. Consumers can verify a downloaded artifact with:
+
+```bash
+gh attestation verify <artifact> --repo a-bonfim-tech/bonfim-sdk
+```
+
+Checksums remain available alongside the generated wheel and source distribution.
 
 ## Quality and verification
 
@@ -241,15 +255,17 @@ Shared models include `Evidence`, `Finding`, `Risk`, `Limitation`, `Recommendati
 - No process or container isolation for component execution.
 - No network connector implementation.
 - No persistent scheduler, database or durable audit store.
-- No signed plugin verification or package attestation enforcement.
+- No signed plugin verification or package attestation enforcement by consumers.
 - Secret-pattern inspection is not a complete DLP control.
 - Successful execution does not prove an external effect, compliance, certification or approval.
 
 ## Project status
 
-Current package version: `0.2.0`.
+Current source version: `0.2.0`.
 
-Technical publication gates are validated on the private candidate. Repository visibility, merge, tagging, GitHub Release creation and package-registry publication remain separate human decisions.
+The source repository is public and the project remains pre-alpha. Public source availability does not imply production readiness, certification, support commitments or package-registry publication.
+
+No package has been published to PyPI. Release tags, GitHub Releases and package-registry distribution remain separate decisions.
 
 ## Contributing
 
@@ -257,4 +273,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports must follow [SECURITY.m
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE). Product names and marks remain subject to the limitation recorded in [NOTICE](NOTICE).
+Copyright 2026 André Luiz Vieira Bonfim.
+
+Licensed under the [Apache License 2.0](LICENSE). Bonfim Labs is the project and publishing name associated with Bonfim SDK; product names and marks remain subject to the limitation recorded in [NOTICE](NOTICE).
