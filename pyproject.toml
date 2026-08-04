@@ -58,3 +58,6 @@ bonfim = "bonfim.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["bonfim*"]
+
+[tool.setuptools.package-data]
+"bonfim.templates" = ["*.tpl"]
