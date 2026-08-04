@@ -1,29 +1,30 @@
 # Publication Readiness Evidence
 
-This document records the measurable technical evidence generated for the private Bonfim SDK publication candidate. It does not authorize merge, repository visibility changes, tagging, GitHub Release creation or package-registry publication.
+This document records the measurable technical evidence used for the public source publication of Bonfim SDK. It does not authorize a release tag, GitHub Release, package-registry publication or production-readiness claim.
 
-## Candidate identity
+## Publication identity
 
 | Field | Value |
 |---|---|
 | Repository | `a-bonfim-tech/bonfim-sdk` |
-| Branch | `release/publication-readiness-v1` |
-| Validation workflow | `Continuous Integration` |
-| Reference successful run | `30951071469` |
-| Reference candidate commit | `73a5143b8842ac2eeca3806716766d3e9f7ec02c` |
+| Validated candidate branch | `release/publication-readiness-v1` |
+| Validated candidate commit | `c0d4c74c302c854b9e4bd628c7ebd0d4ef33ca5e` |
+| Successful final candidate run | `30951318722` |
+| Public `main` integration commit | `4783513fb8b875848ac9aafb40a506b477891755` |
+| Visibility | Public — authorized and completed on 2026-08-04 |
 | Environment | GitHub-hosted Ubuntu 24.04 runners |
 
-The README and this evidence document were added after the reference run. A final workflow run is therefore required on the new exact head commit before publication review is complete.
+The final candidate run completed successfully before the reviewed candidate was integrated into `main`.
 
 ## Test and compatibility evidence
 
-The reference candidate passed:
+The validated candidate passed:
 
 - 58 tests on Python 3.11;
 - 58 tests on Python 3.12;
 - 58 tests on Python 3.13;
 - 58 tests on Python 3.14;
-- source and test compilation on all four Python versions.
+- source and test compilation on all four supported Python versions.
 
 ## Coverage and static quality
 
@@ -40,7 +41,7 @@ The quality job reported:
 
 ## Security and supply-chain evidence
 
-The reference candidate passed:
+The validated candidate passed:
 
 - full-history Gitleaks scanning;
 - CycloneDX SBOM generation and artifact preservation;
@@ -51,7 +52,7 @@ The reference candidate passed:
 - Apache-2.0 metadata validation;
 - SHA-256 checksum generation and verification.
 
-GitHub artifact attestations are not generated while this repository remains private on a non-Enterprise plan. GitHub makes private-repository attestations available through Enterprise Cloud; public repositories can use them on current Free, Pro and Team plans. If public visibility is later approved, build provenance attestation should be added to the release pipeline and verified before package distribution.
+The public `main` workflow also includes build provenance attestation for wheel and source-distribution checksums on direct pushes to `main`.
 
 ## Packaging and reproducibility evidence
 
@@ -70,21 +71,21 @@ The package job successfully:
 
 ## Preserved workflow artifacts
 
-The reference run preserved:
+The final candidate run preserved:
 
 | Artifact | Digest |
 |---|---|
-| Distribution package and checksums | `sha256:92055d71069b9a6e26c542b97c3de8fe46dc07ef4c63da22e54b8cc4b9b1d23c` |
-| Gitleaks SARIF | `sha256:c4fb560cf960153753529a0a761e0f24a5f3e586d31e5fa2a50c780a07ddf146` |
-| CycloneDX SBOM | `sha256:76dcd5c3de76078b7fd53e33c47624f3c9de2cf6ad349a741ca9c418cc7f797e` |
-| Governance evidence | `sha256:5e234ff8faf990995dfb3d95ed33c240e0585567f31509b31563861e4ac620bd` |
+| Distribution package and checksums | `sha256:102e2b08f951e36dbf3c72673f53205bb24fa827bb9ce67e801df97c09ff3349` |
+| Gitleaks SARIF | `sha256:5b576c2066580ba8240a749dfbb7ceec84ced9228a325571802aaf3139f2a56d` |
+| CycloneDX SBOM | `sha256:bbb89d39da9fc13773f406e216b78f0bd089eb7f6723393c91f4a8e170dbeaa5` |
+| Governance evidence | `sha256:30e061f533d533238ddae950e1a159cd83c8408f8b4f16fbb6c5b4e72c6dcde5` |
 
 ## Security review findings resolved during preparation
 
 Two material robustness defects were identified and corrected:
 
-1. Automation rollback previously received the global workflow input rather than the exact input used by the completed step. The candidate now records and reuses the step-specific mapping.
-2. Unexpected component or registry exceptions could escape Agent orchestration. The candidate now returns a structured failed result and withholds exception details.
+1. Automation rollback previously received the global workflow input rather than the exact input used by the completed step. The implementation now records and reuses the step-specific mapping.
+2. Unexpected component or registry exceptions could escape Agent orchestration. The implementation now returns a structured failed result and withholds exception details.
 
 Additional hardening validates Skill selection, individual Skill inputs, Framework inputs and rollback failure reporting.
 
@@ -100,19 +101,14 @@ The following are intentional boundaries, not undisclosed defects:
 - no durable audit store, scheduler, sandbox or network connector is included;
 - the SDK cannot certify compliance, correctness or authorization.
 
-## Final technical gate
+## Publication decision
 
-The project is technically publication-ready only when the final CI run passes on the exact current head commit and no later commit is added.
+Public source visibility was explicitly authorized by the repository owner and completed on 2026-08-04 under Apache License 2.0.
 
-## Human publication gates
+This decision does not authorize:
 
-Even after technical readiness, the following remain separate owner decisions:
-
-- exact diff approval;
-- legal, authorship, trademark and privacy approval;
-- merge approval;
-- public visibility approval;
-- release-tag approval;
-- GitHub Release approval;
-- package-registry publication approval;
-- public profile pinning approval.
+- a release tag;
+- a GitHub Release;
+- PyPI or another package registry;
+- a production-readiness claim;
+- removal of the pre-alpha designation.
