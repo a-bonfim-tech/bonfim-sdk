@@ -210,15 +210,8 @@ jobs:
           print(bonfim.__version__)
           PY
 
-      - name: Generate CycloneDX SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          path: .
-          format: cyclonedx-json
-          output-file: dist/bonfim-sdk.cdx.json
-          upload-artifact: false
-          dependency-snapshot: false
-          syft-version: v1.48.0
+      - name: Generate deterministic CycloneDX SBOM
+        run: bash tools/generate_sbom.sh dist/bonfim-sdk.cdx.json
 
       - name: Preserve frozen release notes
         shell: bash
