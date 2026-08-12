@@ -151,17 +151,19 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: "false"
           GITLEAKS_VERSION: "8.30.1"
 
-      - name: Enforce BQA release gate
-        run: python tools/bqa_verify.py --mode release --output artifacts/bqa-release-evidence.json
-
-      - name: Enforce BRE public release gate
-        run: python tools/bre_verify.py --mode release --output artifacts/bre-release-evidence.json
+      - name: Enforce release governance gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          python tools/bqa_verify.py --mode release --output dist/bqa-release-evidence.json
+          python tools/bre_verify.py --mode release --output dist/bre-release-evidence.json
 
       - name: Build source and wheel distributions
         run: python -m build
 
       - name: Validate distributions
-        run: python -m twine check dist/*
+        run: python -m twine check dist/*.whl dist/*.tar.gz
 
       - name: Verify package contents and metadata
         shell: bash
@@ -187,14 +189,6 @@ jobs:
           if metadata.get("Requires-Python") != ">=3.11":
               raise SystemExit("wheel metadata has unexpected Requires-Python")
           PY
-
-      - name: Generate and verify SHA-256 checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd dist
-          sha256sum *.whl *.tar.gz > SHA256SUMS
-          sha256sum --check SHA256SUMS
 
       - name: Install wheel in clean environment
         shell: bash
@@ -223,6 +217,14 @@ jobs:
           dependency-snapshot: false
           syft-version: v1.48.0
 
+      - name: Generate and verify SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.whl *.tar.gz *.json > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
       - name: Generate build provenance attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
@@ -232,9 +234,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bonfim-sdk-release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            dist/*
-            artifacts/bqa-release-evidence.json
-            artifacts/bre-release-evidence.json
+          path: dist/*
           if-no-files-found: error
           retention-days: 30
