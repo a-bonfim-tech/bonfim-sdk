@@ -72,7 +72,7 @@ jobs:
       - name: Validate release baseline
         run: python tools/bre_verify.py --mode baseline --output artifacts/bre-evidence.json
       - name: Preserve governance evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: governance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -136,7 +136,7 @@ jobs:
       - name: SAST
         run: python -m bandit -r src -q -lll -iii
       - name: Preserve quality evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: quality-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -224,7 +224,7 @@ jobs:
           assert resources.files("bonfim.templates").joinpath("skill.py.tpl").is_file()
           PY
       - name: Preserve distributions and integrity evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: bonfim-sdk-dist-${{ github.run_id }}-${{ github.run_attempt }}
           path: dist/*
