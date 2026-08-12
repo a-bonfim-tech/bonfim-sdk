@@ -16,7 +16,7 @@ class _BenchmarkSkill:
     skill_id = "BENCHMARK-SKILL-001"
 
     @classmethod
-    def validate(cls) -> tuple[()]:
+    def validate(cls) -> tuple[str, ...]:
         return ()
 
 
