@@ -2,7 +2,7 @@
 
 ## Scope
 
-This threat model covers the Bonfim SDK package, CLI, registries, governed component execution, generated outputs and GitHub-based development pipeline.
+This threat model covers the Bonfim SDK package, CLI, registries, governed component execution, generated outputs and GitHub-based development and release pipeline.
 
 It does not cover applications that embed the SDK, external connectors, cloud infrastructure, model providers or third-party components beyond the boundaries explicitly described here.
 
@@ -13,7 +13,7 @@ It does not cover applications that embed the SDK, external connectors, cloud in
 - evidence, findings, risks and decisions;
 - component identifiers and registry integrity;
 - package source and release artifacts;
-- CI evidence, SBOMs and security-scan results;
+- CI evidence, SBOMs, checksums, attestations and security-scan results;
 - developer workstations and GitHub credentials.
 
 ## Trust boundaries
@@ -36,16 +36,21 @@ Outputs may accidentally contain credentials, tokens, keys or sensitive data. Th
 
 ### 5. Repository to CI and release pipeline
 
-GitHub Actions and development dependencies are supply-chain boundaries. Actions are pinned to immutable commit SHAs; security tooling is pinned to controlled versions. A compromised upstream dependency, action or package registry remains a residual risk.
+GitHub Actions, development dependencies, package registries and release artifacts are supply-chain boundaries. Actions are pinned to immutable commit SHAs; verification tooling is pinned to controlled versions; CI generates SBOM and checksum evidence; public distribution artifacts receive provenance attestation. A compromised upstream dependency, package registry, Action publisher or maintainer credential remains a residual risk.
+
+### 6. Release artifact to consumer
+
+The repository can publish hashes, SBOM and provenance evidence, but consumers are responsible for verifying them. The SDK does not force downstream environments to validate GitHub attestations or package origin before installation.
 
 ## Threat actors
 
 - a developer who accidentally passes or returns sensitive data;
 - a malicious or compromised third-party component author;
 - an attacker who controls malformed component inputs;
-- a compromised development dependency or GitHub Action;
+- a compromised development dependency, package registry or GitHub Action;
 - an unauthorized publisher attempting to create a release;
-- a reviewer who mistakes a generated result for an approved decision.
+- a reviewer who mistakes a generated result for an approved decision;
+- a consumer who installs an unverified artifact or bypasses documented trust boundaries.
 
 ## Primary threats and controls
 
@@ -59,8 +64,9 @@ GitHub Actions and development dependencies are supply-chain boundaries. Actions
 | Unbounded retry loop | Automation retries constrained to 0–5 | Individual workflow steps may block without external timeout control |
 | Exception-detail leakage | Unexpected exception details withheld | Domain components may place sensitive data in normal output fields |
 | False authority or compliance claim | Human-review status, limitations and decision statements | Integrators may ignore or remove the statements |
-| Supply-chain compromise | Pinned Actions, Gitleaks, Bandit, SBOM, Dependabot | No package signing, provenance attestation or hermetic build |
-| Unauthorized release | Release environment and validation gates | Repository administrator can still alter settings or workflows |
+| Supply-chain compromise | Pinned Actions, controlled tool versions, Gitleaks, Bandit, CodeQL policy, CycloneDX SBOM, SHA-256 release checksums and build provenance attestation | Builds are not hermetic/offline; upstream registries remain dependencies; consumer verification is not enforced |
+| Unauthorized release | Protected `main`, required CI/CodeQL rulesets, release policy, annotated-tag requirement, exact-main tag binding and release environment | Repository administration or credential compromise can still alter settings or workflows |
+| Artifact substitution after release | Immutable tag/release policy, release checksums and provenance attestation | Consumers may fail to verify hashes or attestation before installation |
 | Path or file abuse through CLI input | JSON-only input, 1 MB file limit, explicit path | Caller can read any locally accessible file they already have permission to read |
 
 ## Security invariants
@@ -77,6 +83,8 @@ The following properties are intended to hold:
 8. Rollback attempts and failures remain observable.
 9. Framework dependency cycles are rejected.
 10. Generated results retain an explicit human-decision requirement.
+11. A release tag must not bypass version, compatibility, security, packaging and evidence gates.
+12. PyPI or another registry publication must not occur implicitly from GitHub Release publication.
 
 ## Abuse cases requiring additional controls
 
@@ -91,17 +99,17 @@ The SDK is not suitable, without additional isolation, for:
 
 ## Future security gates
 
-- process or container isolation;
+- process or container isolation for untrusted or semi-trusted component execution;
 - resource quotas and execution deadlines;
-- signed packages and publisher verification;
+- signed package and publisher verification enforced by the runtime or consumer policy;
 - capability-based connector permissions;
 - durable append-only audit logs;
-- build provenance and artifact attestation;
-- automated license and vulnerability policy enforcement;
+- hermetic or otherwise stronger reproducible build controls;
+- automated license and vulnerability policy enforcement at release time;
 - structured data classification and stronger output DLP;
 - cancellation and distributed rate limiting;
 - independent external security review.
 
 ## Review rule
 
-A passing CI run reduces known implementation risk but does not prove vulnerability absence, production readiness, compliance or authorization. Publication and release require explicit human review.
+A passing CI or release-candidate run reduces known implementation and supply-chain risk but does not prove vulnerability absence, production readiness, compliance or authorization. GitHub Release publication and package-registry publication remain separate human decisions.
