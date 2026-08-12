@@ -1,6 +1,6 @@
 # Release Policy
 
-Bonfim SDK is public source software in pre-alpha status. Source visibility, release tagging, GitHub Release publication and package-registry distribution are separate decisions.
+Bonfim SDK is public source software in pre-alpha status. Source visibility, candidate readiness, release authorization, release tagging, GitHub Release publication and package-registry distribution are separate decisions.
 
 ## Release authority
 
@@ -8,6 +8,7 @@ Only the repository owner may authorize:
 
 - a version change;
 - a release-candidate build;
+- approval of the BQA/BRE publication gates;
 - creation of a Git tag;
 - publication of a GitHub Release;
 - publication to PyPI or another package registry;
@@ -22,10 +23,10 @@ A release candidate must define:
 - the intended Semantic Version;
 - the exact source commit;
 - the supported Python versions;
-- the release notes and migration impact;
+- frozen release notes and migration impact;
 - the licensing and attribution state;
 - the distribution scope;
-- the explicit owner authorization.
+- the explicit owner authorization required for publication.
 
 ## Mandatory technical gates
 
@@ -33,32 +34,45 @@ Before a release decision, the exact candidate must pass:
 
 1. tests on Python 3.11, 3.12, 3.13 and 3.14;
 2. branch-aware coverage of at least 90%;
-3. Ruff;
+3. Ruff linting;
 4. mypy strict;
-5. Bandit at the configured blocking threshold;
-6. full-history Gitleaks scanning;
-7. CycloneDX SBOM generation;
-8. wheel and source-distribution build;
-9. `twine check`;
-10. package-content and metadata verification;
-11. SHA-256 checksum generation and verification over release distributions and evidence assets;
-12. clean-environment installation and CLI smoke testing;
-13. BQA and BRE release-gate validation;
-14. build-provenance attestation for the final release asset checksum set.
+5. deterministic formatting verification;
+6. Bandit at the configured blocking threshold;
+7. full-history Gitleaks scanning;
+8. runtime-license and distributed-license verification;
+9. a conservative registry performance regression baseline;
+10. CycloneDX SBOM generation;
+11. wheel and source-distribution build;
+12. `twine check`;
+13. package-content and metadata verification;
+14. SHA-256 checksum generation and verification over release distributions and evidence assets;
+15. clean-environment installation and CLI smoke testing;
+16. BQA/BRE **candidate-readiness** validation;
+17. build-provenance attestation for the final candidate asset checksum set.
+
+## Candidate readiness versus publication authorization
+
+Candidate validation and publication authorization are intentionally separate gates.
+
+`BQA --mode candidate` and `BRE --mode candidate` answer only whether the exact source and generated evidence are technically ready for human release review. They do **not** approve publication and they do not alter the owner-controlled release fields in the repository manifests.
+
+After a candidate passes, the owner reviews the evidence and may make a separate publication decision. Only after that decision is retained may `BQA --mode release` and `BRE --mode release` pass.
+
+This ordering prevents circular authority: technical evidence must be complete before the human is asked to authorize publication.
 
 ## Release-candidate workflow
 
 The manual release-candidate workflow validates an exact source ref and preserves artifacts. It does not create a tag, GitHub Release or package-registry publication.
 
-The operator must provide the expected version. The workflow fails when the value does not match `VERSION`, `pyproject.toml`, `bonfim.__version__` and the corresponding `CHANGELOG.md` section.
+The operator must provide the expected version. The workflow fails when the value does not match `VERSION`, `pyproject.toml`, `bonfim.__version__`, the corresponding `CHANGELOG.md` section and frozen version-specific release notes.
 
-The exact candidate is tested on Python 3.11, 3.12, 3.13 and 3.14 before packaging and assurance evidence are produced.
+The exact candidate is tested on Python 3.11, 3.12, 3.13 and 3.14. Technical evidence, distributions, SBOM, checksums and candidate provenance are generated before BRE candidate-readiness is evaluated.
 
 ## GitHub Release workflow
 
 An explicitly created annotated `vMAJOR.MINOR.PATCH` tag is the human release trigger. The tag workflow must fail closed unless the tag points to the exact protected `main` HEAD and all source version declarations and changelog metadata agree.
 
-The final GitHub Release workflow repeats the release compatibility matrix and assurance gates, builds wheel and source distributions, generates the CycloneDX SBOM, BQA/BRE evidence and SHA-256 checksum manifest, produces provenance attestation, and attaches the verified release artifacts to the GitHub Release.
+The final GitHub Release workflow repeats the release compatibility matrix and technical assurance gates, generates the release artifacts, then requires the retained BQA/BRE **release authorization** state before publication. It produces provenance attestation and attaches the verified release artifacts to the GitHub Release.
 
 A successful tag workflow authorizes only the GitHub Release associated with the explicitly created tag. It does not authorize PyPI or another package registry.
 
@@ -74,6 +88,7 @@ The owner must review:
 - package metadata;
 - license and NOTICE files;
 - generated checksums, SBOM and provenance;
+- candidate BQA/BRE evidence;
 - whether public distribution is appropriate.
 
 ## Prohibited implicit actions
@@ -81,6 +96,7 @@ The owner must review:
 The following must never happen merely because CI or release-candidate validation passes:
 
 - automatic version bumping;
+- automatic approval of BQA/BRE publication fields;
 - automatic tag creation;
 - automatic GitHub Release publication without an explicitly created release tag;
 - automatic PyPI publication;
@@ -91,8 +107,9 @@ The following must never happen merely because CI or release-candidate validatio
 
 - Public source repository: authorized.
 - Source hardening candidate: `0.2.1`.
-- Release-candidate validation for `0.2.1`: pending merge and exact-candidate execution.
-- Git tag `v0.2.1`: not yet authorized for creation by this technical preparation step.
-- GitHub Release `v0.2.1`: not yet authorized for publication by this technical preparation step.
+- Exact release-candidate validation for `0.2.1`: pending execution of the candidate-readiness-separated workflow.
+- Human BQA/BRE publication approval: pending.
+- Git tag `v0.2.1`: not authorized by candidate preparation alone.
+- GitHub Release `v0.2.1`: not authorized by candidate preparation alone.
 - PyPI publication: not authorized.
 - Project maturity: pre-alpha.

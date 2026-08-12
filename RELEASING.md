@@ -10,9 +10,11 @@ This repository follows Semantic Versioning using tags in the form `vMAJOR.MINOR
 - `MINOR`: backward-compatible capability.
 - `PATCH`: backward-compatible fix, security hardening or documentation correction.
 - During `0.y.z`, breaking changes increment `MINOR`; compatible changes and fixes increment `PATCH`.
-- Pre-releases require a separately approved process because Python PEP 440 and npm encode them differently; the current workflow publishes stable SemVer tags only.
+- Pre-releases require a separately approved process because Python PEP 440 and SemVer encode them differently; the current workflow publishes stable SemVer tags only.
 
-A public contract includes import paths, schemas, CLI commands, HTTP endpoints, configuration names and documented behavior intended for consumers.
+A public contract includes import paths, schemas, CLI commands, configuration names and documented behavior intended for consumers.
+
+See `docs/compatibility.md` for the current pre-1.0 compatibility and deprecation policy.
 
 ## Required evidence
 
@@ -21,14 +23,17 @@ A release requires:
 1. An approved change merged into protected `main`.
 2. Green repository validation and CodeQL policy checks.
 3. Updated `VERSION`, package manifest, package `__version__` and `CHANGELOG.md`.
-4. Confirmed compatibility classification.
+4. Confirmed compatibility classification and frozen version-specific release notes.
 5. No known exposed secrets or generated credentials.
-6. Human maintainer approval.
-7. Passing BQA and BRE release gates with preserved evidence.
-8. Approved release notes, migration guidance, SBOM, checksums and license information.
-9. A separate, explicit public-release authorization. A green CI or release-candidate run is not authorization.
-
-The release-candidate workflow must test the exact source ref on Python 3.11, 3.12, 3.13 and 3.14 and preserve evidence from coverage, Ruff, mypy, Bandit, full-history Gitleaks, CycloneDX SBOM, package verification, BQA/BRE, clean installation and provenance attestation.
+6. Exact-candidate validation on Python 3.11, 3.12, 3.13 and 3.14.
+7. Coverage, Ruff, mypy, formatting, Bandit, runtime-license and performance regression gates.
+8. Full-history Gitleaks scanning and CycloneDX SBOM generation.
+9. Verified wheel/source distributions, package metadata and clean installation.
+10. Candidate SHA-256 manifest and build-provenance attestation.
+11. Passing BQA and BRE **candidate-readiness** evidence.
+12. Human maintainer review of the complete candidate evidence.
+13. A separate explicit BQA/BRE publication approval and public-release authorization.
+14. Passing BQA and BRE **release** gates against the exact final source.
 
 A generated SBOM is an inventory artifact, not proof that every component is safe or legally usable.
 
@@ -38,9 +43,28 @@ Before creating a tag, run the manual `Release Candidate Validation` workflow ag
 
 The workflow is non-publishing. It must complete successfully before the owner considers release authorization.
 
+Candidate validation deliberately uses `BQA --mode candidate` and `BRE --mode candidate`. These modes validate technical readiness but do not set or infer human approval, public-release authorization, Git tag authority or package-registry authority.
+
+The candidate workflow first creates the evidence needed for review — distributions, SBOM, quality evidence, frozen release notes, candidate evidence and checksums — and only then evaluates BRE candidate readiness. This prevents a circular requirement for approval before evidence exists.
+
+## Human release decision
+
+After candidate validation passes, the owner reviews:
+
+- the exact candidate source commit;
+- all candidate checks and generated artifacts;
+- changelog and frozen release notes;
+- compatibility impact;
+- threat-model changes;
+- security findings and residual risks;
+- license/NOTICE state;
+- checksums, SBOM and provenance.
+
+If publication is approved, that decision must be retained separately in the repository governance/release state. Candidate success alone is never publication authority.
+
 ## Publication procedure
 
-After the candidate is reviewed and the owner separately authorizes GitHub Release publication:
+Only after the candidate passes and the owner separately authorizes GitHub Release publication:
 
 ```bash
 VERSION=X.Y.Z
@@ -53,11 +77,11 @@ git tag -s "v$VERSION" -m "Release v$VERSION"
 git push origin "v$VERSION"
 ```
 
-Do not create the release tag before the version-preparation commit has already been merged through the protected branch workflow.
+Do not create the release tag before the release-authorization state has already been merged through the protected branch workflow.
 
-The tag workflow requires an annotated version tag pointing to the exact protected `main` HEAD. It then repeats the Python 3.11–3.14 compatibility tests and release assurance gates before publishing.
+The tag workflow requires an annotated version tag pointing to the exact protected `main` HEAD. It repeats Python 3.11–3.14 compatibility tests and technical assurance, creates the release artifacts, then executes `BQA --mode release` and `BRE --mode release`. Those release modes remain fail-closed unless the retained human authorization fields are approved.
 
-The GitHub Release attaches the verified wheel, source distribution, CycloneDX SBOM, BQA/BRE evidence and `SHA256SUMS`. The checksum set receives GitHub build-provenance attestation.
+The GitHub Release attaches the verified wheel, source distribution, CycloneDX SBOM, candidate/release evidence and `SHA256SUMS`. The checksum set receives GitHub build-provenance attestation.
 
 Publishing to PyPI or another package registry is a separate decision and is not implicit in the GitHub Release.
 

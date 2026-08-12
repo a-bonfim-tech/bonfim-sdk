@@ -99,7 +99,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Compile source
-        run: python -m compileall -q src examples tests
+        run: python -m compileall -q src examples tests tools
       - name: Run tests
         env:
           PYTHONPATH: src
@@ -124,11 +124,27 @@ jobs:
       - name: Enforce coverage threshold
         run: python -m coverage run -m unittest discover -s tests -v && python -m coverage report --fail-under=90
       - name: Lint
-        run: python -m ruff check src tests examples
+        run: python -m ruff check src tests examples tools
       - name: Type check
         run: python -m mypy -p bonfim
+      - name: Deterministic formatting gate
+        run: python tools/format_verify.py --output artifacts/format-evidence.json
+      - name: Runtime license gate
+        run: python tools/license_verify.py --output artifacts/license-evidence.json
+      - name: Registry performance regression baseline
+        run: python tools/performance_baseline.py --output artifacts/performance-evidence.json
       - name: SAST
         run: python -m bandit -r src -q -lll -iii
+      - name: Preserve quality evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quality-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/format-evidence.json
+            artifacts/license-evidence.json
+            artifacts/performance-evidence.json
+          if-no-files-found: error
+          retention-days: 30
 
   package:
     name: Build, install and verify package

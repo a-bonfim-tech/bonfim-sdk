@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate BRE-001 release evidence without authorizing publication."""
+"""Validate BRE-001 evidence without performing or self-authorizing publication."""
 
 from __future__ import annotations
 
@@ -25,12 +25,22 @@ ARTIFACTS = {
     "securityDisclosure",
     "compatibilityPolicy",
 }
-STATUSES = {"available", "planned", "not_applicable"}
+STATUSES = {"available", "generated", "planned", "not_applicable"}
+
+
+def load_result(path: Path) -> str | None:
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    if isinstance(loaded, dict) and isinstance(loaded.get("result"), str):
+        return loaded["result"]
+    return None
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("baseline", "release"), default="baseline")
+    parser.add_argument("--mode", choices=("baseline", "candidate", "release"), default="baseline")
     parser.add_argument("--output")
     args = parser.parse_args()
     root = Path.cwd()
@@ -89,19 +99,38 @@ def main() -> int:
                     path = control.get("path")
                     if not path or not (root / str(path)).exists():
                         errors.append(f"available artifact path is missing: {name}")
+                elif status == "generated":
+                    path = control.get("path")
+                    command = control.get("command")
+                    if not path or not command:
+                        errors.append(f"generated artifact requires path and command: {name}")
+                    elif args.mode in {"candidate", "release"} and not (root / str(path)).exists():
+                        errors.append(f"generated artifact path is missing in {args.mode} mode: {name}")
                 else:
                     if len(str(control.get("justification", ""))) < 20:
                         errors.append(f"artifact requires substantive justification: {name}")
                     if status == "planned":
                         gaps.append(f"artifact:{name}")
 
-        bqa = manifest.get("bqa", {})
-        if not isinstance(bqa, dict) or bqa.get("status") != "Approved":
-            gaps.append("gate:bqa-approved")
-        if manifest.get("humanReviewStatus") != "approved":
-            gaps.append("gate:human-review")
-        if manifest.get("publicReleaseAuthorized") is not True:
-            gaps.append("gate:public-release-authorization")
+        if args.mode == "candidate":
+            bqa_candidate = root / "dist/bqa-candidate-evidence.json"
+            if load_result(bqa_candidate) != "Passed":
+                gaps.append("gate:bqa-candidate-passed")
+        else:
+            bqa = manifest.get("bqa", {})
+            if not isinstance(bqa, dict) or bqa.get("status") != "Approved":
+                gaps.append("gate:bqa-approved")
+
+        if args.mode == "release":
+            if manifest.get("humanReviewStatus") != "approved":
+                gaps.append("gate:human-review")
+            if manifest.get("publicReleaseAuthorized") is not True:
+                gaps.append("gate:public-release-authorization")
+        elif args.mode == "baseline":
+            if manifest.get("humanReviewStatus") != "approved":
+                gaps.append("gate:human-review")
+            if manifest.get("publicReleaseAuthorized") is not True:
+                gaps.append("gate:public-release-authorization")
 
     result = "Failed" if errors else ("Requires Revision" if gaps else "Passed")
     report = {
@@ -115,8 +144,10 @@ def main() -> int:
         "errors": sorted(set(errors)),
         "openGaps": sorted(set(gaps)),
         "publicationPerformed": False,
+        "publicationAuthorized": False,
         "limitations": [
-            "This verifier checks declared local evidence; it does not publish, sign, approve or certify a release."
+            "This verifier checks declared local evidence; it does not publish, sign, approve or certify a release.",
+            "Candidate mode establishes technical evidence readiness only and intentionally does not satisfy human publication gates."
         ],
         "confidence": "high",
     }
@@ -126,7 +157,11 @@ def main() -> int:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(rendered, encoding="utf-8")
     print(rendered, end="")
-    return 1 if errors or (args.mode == "release" and result != "Passed") else 0
+    if errors:
+        return 1
+    if args.mode in {"candidate", "release"} and result != "Passed":
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

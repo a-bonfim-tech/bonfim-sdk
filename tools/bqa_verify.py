@@ -40,7 +40,7 @@ TARGETS = {
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("baseline", "release"), default="baseline")
+    parser.add_argument("--mode", choices=("baseline", "candidate", "release"), default="baseline")
     parser.add_argument("--output")
     args = parser.parse_args()
     root = Path.cwd()
@@ -121,18 +121,27 @@ def main() -> int:
                 }:
                     errors.append(f"invalid static check: {name}")
                     continue
-                if control["status"] == "planned":
+                if control["status"] == "required":
+                    if not control.get("command") or not control.get("evidence"):
+                        errors.append(f"required static check lacks command or evidence: {name}")
+                    for evidence in control.get("evidence", []):
+                        if not (root / str(evidence)).exists():
+                            errors.append(f"missing static-check evidence path for {name}: {evidence}")
+                elif control["status"] == "planned":
                     gaps.append(f"static:{name}")
+                elif len(str(control.get("justification", ""))) < 20:
+                    errors.append(f"missing substantive static-check justification: {name}")
         release = manifest.get("release", {})
         if not isinstance(release, dict) or release.get("certification") != "human-review-required":
             errors.append("release certification must require human review")
-        else:
+        elif args.mode == "release":
             if release.get("humanReviewStatus") != "approved":
                 gaps.append("release:human-review")
             if release.get("approvalStatus") != "Aprovado":
                 gaps.append("release:bqa-approval")
-            if args.mode == "release" and release.get("releaseDecision") != "approved":
+            if release.get("releaseDecision") != "approved":
                 gaps.append("release:decision")
+
     result = "Failed" if errors else ("Requires Revision" if gaps else "Passed")
     report = {
         "executionId": str(uuid.uuid4()),
@@ -141,12 +150,22 @@ def main() -> int:
         "version": manifest.get("componentVersion", "unknown"),
         "environment": {"python": platform.python_version(), "platform": platform.platform()},
         "mode": args.mode,
-        "executedChecks": ["manifest", "version", "governance", "applicability", "evidence-paths", "release-gate"],
+        "executedChecks": [
+            "manifest",
+            "version",
+            "governance",
+            "applicability",
+            "evidence-paths",
+            "technical-readiness",
+            "release-gate" if args.mode == "release" else "publication-gate-not-executed",
+        ],
         "result": result,
         "errors": sorted(set(errors)),
         "openGaps": sorted(set(gaps)),
+        "publicationAuthorized": False,
         "limitations": [
-            "Declared commands execute in separate CI steps; this verifier validates their contract and evidence paths."
+            "Declared commands execute in separate CI steps; this verifier validates their contract and evidence paths.",
+            "Candidate mode establishes technical readiness only and does not approve or authorize publication.",
         ],
         "confidence": "high",
     }
@@ -156,7 +175,11 @@ def main() -> int:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(rendered, encoding="utf-8")
     print(rendered, end="")
-    return 1 if errors or (args.mode == "release" and result != "Passed") else 0
+    if errors:
+        return 1
+    if args.mode in {"candidate", "release"} and result != "Passed":
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
