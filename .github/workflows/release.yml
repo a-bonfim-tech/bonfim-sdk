@@ -6,14 +6,17 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Validate and publish release
+  preflight:
+    name: Release tag preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: release
+    timeout-minutes: 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -21,7 +24,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Validate Semantic Version
+      - name: Validate annotated tag, version and source commit
         shell: bash
         run: |
           set -euo pipefail
@@ -30,44 +33,247 @@ jobs:
             echo "Tag must be vMAJOR.MINOR.PATCH" >&2
             exit 1
           fi
-          version="$(tr -d '[:space:]' < VERSION)"
-          test "${tag}" = "v${version}"
-          test "$(git cat-file -t "refs/tags/${tag}")" = "tag"
-          grep -Fq "## [${version}]" CHANGELOG.md
 
-      - name: Validate package manifest
-        shell: bash
-        run: |
+          if [[ "$(git cat-file -t "refs/tags/${tag}")" != "tag" ]]; then
+            echo "Release tags must be annotated tags." >&2
+            exit 1
+          fi
+
+          version="${tag#v}"
+          version_file="$(tr -d '[:space:]' < VERSION)"
+          test "${version}" = "${version_file}"
+
           python3 - <<'PY'
-          import json
-          from pathlib import Path
+          import pathlib
+          import re
           import tomllib
 
-          expected = Path("VERSION").read_text().strip()
-          if Path("pyproject.toml").exists():
-              actual = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
-          elif Path("package.json").exists():
-              actual = json.loads(Path("package.json").read_text())["version"]
-          else:
-              actual = expected
-          if actual != expected:
-              raise SystemExit(f"manifest version {actual!r} does not match VERSION {expected!r}")
+          version = pathlib.Path("VERSION").read_text(encoding="utf-8").strip()
+          project_version = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          source = pathlib.Path("src/bonfim/__init__.py").read_text(encoding="utf-8")
+          match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', source, re.MULTILINE)
+          if match is None:
+              raise SystemExit("could not read bonfim.__version__")
+          source_version = match.group(1)
+          if {version, project_version, source_version} != {version}:
+              raise SystemExit(
+                  f"version mismatch: VERSION={version}, pyproject={project_version}, source={source_version}"
+              )
+          changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          if f"## [{version}]" not in changelog:
+              raise SystemExit(f"CHANGELOG.md does not contain version {version}")
           PY
 
-      - name: Enforce BQA release gate
-        run: python3 tools/bqa_verify.py --mode release --output artifacts/bqa-release-evidence.json
+          tag_commit="$(git rev-list -n 1 "refs/tags/${tag}")"
+          git fetch --no-tags origin main
+          main_commit="$(git rev-parse origin/main)"
+          if [[ "${tag_commit}" != "${main_commit}" ]]; then
+            echo "Release tag must point to the exact protected main HEAD." >&2
+            echo "tag_commit=${tag_commit}" >&2
+            echo "main_commit=${main_commit}" >&2
+            exit 1
+          fi
 
-      - name: Enforce BRE public release gate
-        run: python3 tools/bre_verify.py --mode release --output artifacts/bre-release-evidence.json
+  tests:
+    name: Release tests — Python ${{ matrix.python }}
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Publish GitHub Release
+      - name: Configure Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Compile and test
+        env:
+          PYTHONPATH: src
+        run: |
+          set -euo pipefail
+          python -m compileall -q src examples tests
+          python -m unittest discover -s tests -v
+
+  publish:
+    name: Validate, attest and publish GitHub Release
+    needs: [preflight, tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout tagged source with full history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pinned verification tools
+        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+
+      - name: Enforce coverage threshold
+        run: |
+          set -euo pipefail
+          python -m coverage run -m unittest discover -s tests -v
+          python -m coverage report --fail-under=90
+
+      - name: Lint, type check and SAST
+        run: |
+          set -euo pipefail
+          python -m ruff check src tests examples
+          python -m mypy -p bonfim
+          python -m bandit -r src -q -lll -iii
+
+      - name: Full-history secret scan
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_VERSION: "8.30.1"
+
+      - name: Enforce release governance gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          python tools/bqa_verify.py --mode release --output dist/bqa-release-evidence.json
+          python tools/bre_verify.py --mode release --output dist/bre-release-evidence.json
+
+      - name: Build source and wheel distributions
+        run: python -m build
+
+      - name: Validate distributions
+        run: python -m twine check dist/*.whl dist/*.tar.gz
+
+      - name: Verify package contents and metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import email
+          import zipfile
+
+          wheel = next(Path("dist").glob("*.whl"))
+          with zipfile.ZipFile(wheel) as archive:
+              names = set(archive.namelist())
+              metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))
+              metadata = email.message_from_bytes(archive.read(metadata_name))
+
+          required_suffixes = ("LICENSE", "NOTICE", "py.typed")
+          missing = [suffix for suffix in required_suffixes if not any(name.endswith(suffix) for name in names)]
+          if missing:
+              raise SystemExit(f"wheel is missing required files: {missing}")
+          if metadata.get("License-Expression") != "Apache-2.0":
+              raise SystemExit("wheel metadata does not declare Apache-2.0")
+          if metadata.get("Requires-Python") != ">=3.11":
+              raise SystemExit("wheel metadata has unexpected Requires-Python")
+          PY
+
+      - name: Install wheel in a clean environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/bonfim-sdk-release
+          /tmp/bonfim-sdk-release/bin/python -m pip install --disable-pip-version-check --no-deps dist/*.whl
+          /tmp/bonfim-sdk-release/bin/bonfim version
+          /tmp/bonfim-sdk-release/bin/bonfim doctor
+          /tmp/bonfim-sdk-release/bin/python - <<'PY'
+          import bonfim
+          from importlib import resources
+
+          assert resources.files("bonfim").joinpath("py.typed").is_file()
+          assert resources.files("bonfim.templates").joinpath("skill.py.tpl").is_file()
+          print(bonfim.__version__)
+          PY
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/bonfim-sdk.cdx.json
+          upload-artifact: false
+          dependency-snapshot: false
+          syft-version: v1.48.0
+
+      - name: Generate release notes from changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          version = Path("VERSION").read_text(encoding="utf-8").strip()
+          lines = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          start = None
+          end = None
+          heading = f"## [{version}]"
+          for index, line in enumerate(lines):
+              if line.startswith(heading):
+                  start = index
+                  continue
+              if start is not None and index > start and line.startswith("## ["):
+                  end = index
+                  break
+          if start is None:
+              raise SystemExit(f"could not find changelog section for {version}")
+          if end is None:
+              end = len(lines)
+          body = "\n".join(lines[start + 1:end]).strip() + "\n"
+          Path("dist/RELEASE_NOTES.md").write_text(body, encoding="utf-8")
+          PY
+
+      - name: Generate and verify SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.whl *.tar.gz *.json > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Generate build provenance attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-checksums: dist/SHA256SUMS
+
+      - name: Publish immutable GitHub Release with verified assets
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
             echo "Release already exists; tags and releases are immutable." >&2
             exit 1
           fi
-          gh release create "${GITHUB_REF_NAME}" --verify-tag --title "${GITHUB_REF_NAME}" --generate-notes
+
+          gh release create "${tag}" \
+            dist/*.whl \
+            dist/*.tar.gz \
+            dist/SHA256SUMS \
+            dist/bonfim-sdk.cdx.json \
+            dist/bqa-release-evidence.json \
+            dist/bre-release-evidence.json \
+            --verify-tag \
+            --title "${tag}" \
+            --notes-file dist/RELEASE_NOTES.md
