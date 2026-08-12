@@ -116,8 +116,8 @@
     },
     "sbom": {
       "status": "required",
-      "command": "syft dir:. -o cyclonedx-json=artifacts/bonfim-sdk.cdx.json",
-      "evidence": ["artifacts/bonfim-sdk.cdx.json", ".github/workflows/ci.yml"]
+      "command": "bash tools/generate_sbom.sh artifacts/bonfim-sdk.cdx.json",
+      "evidence": ["tools/generate_sbom.sh", "artifacts/bonfim-sdk.cdx.json", ".github/workflows/ci.yml"]
     },
     "license-verification": {
       "status": "required",
