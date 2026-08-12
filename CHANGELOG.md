@@ -4,6 +4,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-12
+
 ### Added
 
 - Recruiter- and developer-facing README with clear problem statement, architecture, quick start, security boundary and limitations.
@@ -17,6 +19,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Mandatory Bandit SAST, full-history Gitleaks scanning, and CycloneDX SBOM generation in the SDK CI baseline.
 - Security tooling pinned to controlled versions and third-party Actions pinned to immutable commit SHAs.
 - Apache-2.0 package metadata with `LICENSE` and `NOTICE` preserved in built wheels.
+- Controlled non-publishing release-candidate workflow.
+- GitHub build-provenance attestation for public `main` distributions.
+- Repository rulesets requiring pull requests, CI checks and CodeQL policy before protected-branch integration.
 
 ### Changed
 
@@ -26,6 +31,14 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Framework execution rejects non-mapping inputs through a structured failure result.
 - Package metadata now includes classifiers, keywords and project URLs suitable for public distribution.
 - CI now uses concurrency cancellation and verifies built distribution metadata and required package contents.
+- Public repository governance now includes CODEOWNERS and an explicit release policy separating source visibility, release tags, GitHub Releases and package-registry publication.
+- GitHub release automation now performs the release gates against the tagged source, builds and verifies distributions, generates checksums and SBOM evidence, creates provenance attestation, and attaches release artifacts to the GitHub Release.
+
+### Security
+
+- Unexpected component or registry exceptions are converted into structured failures with implementation details withheld.
+- Full-history secret scanning and CodeQL remain required security signals for protected-branch integration.
+- Release publication remains human-triggered through an explicitly created annotated version tag; successful CI alone does not create release authority.
 
 ## [0.2.0] - 2026-07-15
 

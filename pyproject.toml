@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bonfim-sdk"
-version = "0.2.0"
+version = "0.2.1"
 description = "Governed Python SDK for auditable security skills, AI agents and automations"
 readme = "README.md"
 requires-python = ">=3.11"

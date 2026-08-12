@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "repository": "sdk",
-  "componentVersion": "0.2.0",
+  "componentVersion": "0.2.1",
   "governance": {
     "knowledgeCategory": "C",
     "evidenceLevel": "D",

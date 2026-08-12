@@ -198,10 +198,12 @@ jobs:
           /tmp/bonfim-sdk-smoke/bin/bonfim version
           /tmp/bonfim-sdk-smoke/bin/bonfim doctor
           /tmp/bonfim-sdk-smoke/bin/python - <<'PY'
+          from pathlib import Path
           import bonfim
           from importlib import resources
 
-          assert bonfim.__version__ == "0.2.0"
+          expected_version = Path("VERSION").read_text(encoding="utf-8").strip()
+          assert bonfim.__version__ == expected_version
           assert resources.files("bonfim").joinpath("py.typed").is_file()
           assert resources.files("bonfim.templates").joinpath("skill.py.tpl").is_file()
           PY

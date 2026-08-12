@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0", "repository": "sdk", "componentVersion": "0.2.0",
+  "schemaVersion": "1.0", "repository": "sdk", "componentVersion": "0.2.1",
   "governance": {"knowledgeCategory": "C", "evidenceLevel": "D", "approvalStatus": "Proposta"},
   "targets": {"unitCoverage": 90, "integrationCoverage": 80, "criticalWorkflows": 100, "criticalSecurityControls": 100, "publicApiContracts": 100, "frameworkValidation": 100, "evidenceGeneration": 100},
   "categories": {

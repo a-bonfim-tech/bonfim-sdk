@@ -8,7 +8,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
-from bonfim import Skill
+from bonfim import Skill, __version__
 from bonfim.cli import create_component, main, parse_inputs, render_template, snake_case
 
 
@@ -50,7 +50,7 @@ class CLITests(unittest.TestCase):
     def test_version_doctor_validate_and_new(self) -> None:
         code, output, _ = self.invoke(["version"])
         self.assertEqual(code, 0)
-        self.assertEqual(output.strip(), "0.2.0")
+        self.assertEqual(output.strip(), __version__)
 
         code, output, _ = self.invoke(["doctor"])
         self.assertEqual(code, 0)
