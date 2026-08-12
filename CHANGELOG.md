@@ -22,6 +22,10 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Controlled non-publishing release-candidate workflow.
 - GitHub build-provenance attestation for public `main` distributions.
 - Repository rulesets requiring pull requests, CI checks and CodeQL policy before protected-branch integration.
+- Separate BQA/BRE `candidate` readiness modes so technical evidence can be completed before human publication authorization.
+- Deterministic formatting, runtime-license and registry performance regression gates with preserved JSON evidence.
+- Frozen version-specific release notes and an explicit pre-1.0 compatibility/deprecation policy.
+- Non-authorizing candidate evidence manifest included in the candidate asset integrity set.
 
 ### Changed
 
@@ -33,12 +37,15 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - CI now uses concurrency cancellation and verifies built distribution metadata and required package contents.
 - Public repository governance now includes CODEOWNERS and an explicit release policy separating source visibility, release tags, GitHub Releases and package-registry publication.
 - GitHub release automation now performs the release gates against the tagged source, builds and verifies distributions, generates checksums and SBOM evidence, creates provenance attestation, and attaches release artifacts to the GitHub Release.
+- Release-candidate and final-release workflows now create technical artifacts before BRE validation, removing the previous circular dependency between evidence generation and publication approval.
+- Final BQA/BRE `release` modes remain distinct and require retained human approval before publication can proceed.
 
 ### Security
 
 - Unexpected component or registry exceptions are converted into structured failures with implementation details withheld.
 - Full-history secret scanning and CodeQL remain required security signals for protected-branch integration.
 - Release publication remains human-triggered through an explicitly created annotated version tag; successful CI alone does not create release authority.
+- Candidate-readiness evidence explicitly records `publicationAuthorized: false` and cannot satisfy the final release authorization gate.
 
 ## [0.2.0] - 2026-07-15
 
