@@ -107,9 +107,9 @@ The following must never happen merely because CI or release-candidate validatio
 
 - Public source repository: authorized.
 - Source hardening candidate: `0.2.1`.
-- Exact release-candidate validation for `0.2.1`: pending execution of the candidate-readiness-separated workflow.
-- Human BQA/BRE publication approval: pending.
-- Git tag `v0.2.1`: not authorized by candidate preparation alone.
-- GitHub Release `v0.2.1`: not authorized by candidate preparation alone.
+- Exact release-candidate validation for `0.2.1`: passed for commit `1dc0ecbe34428d482e06856b00253bb453e37432` in workflow run `31638386310`.
+- Human BQA/BRE publication approval: approved by the repository owner for GitHub Release `v0.2.1`.
+- Git tag `v0.2.1`: authorized; not yet created.
+- GitHub Release `v0.2.1`: authorized; not yet published.
 - PyPI publication: not authorized.
 - Project maturity: pre-alpha.
