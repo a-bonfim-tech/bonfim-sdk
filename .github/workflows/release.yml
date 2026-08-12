@@ -62,6 +62,8 @@ jobs:
           changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
           if f"## [{version}]" not in changelog:
               raise SystemExit(f"CHANGELOG.md does not contain version {version}")
+          if not pathlib.Path(f"release/notes/v{version}.md").is_file():
+              raise SystemExit(f"release notes are missing for {version}")
           PY
 
           tag_commit="$(git rev-list -n 1 "refs/tags/${tag}")"
@@ -100,7 +102,7 @@ jobs:
           PYTHONPATH: src
         run: |
           set -euo pipefail
-          python -m compileall -q src examples tests
+          python -m compileall -q src examples tests tools
           python -m unittest discover -s tests -v
 
   publish:
@@ -138,9 +140,18 @@ jobs:
       - name: Lint, type check and SAST
         run: |
           set -euo pipefail
-          python -m ruff check src tests examples
+          python -m ruff check src tests examples tools
           python -m mypy -p bonfim
           python -m bandit -r src -q -lll -iii
+
+      - name: Enforce deterministic formatting policy
+        run: python tools/format_verify.py --output dist/format-evidence.json
+
+      - name: Enforce runtime license policy
+        run: python tools/license_verify.py --output dist/license-evidence.json
+
+      - name: Enforce registry performance regression baseline
+        run: python tools/performance_baseline.py --output dist/performance-evidence.json
 
       - name: Full-history secret scan
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
@@ -148,14 +159,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GITLEAKS_ENABLE_COMMENTS: "false"
           GITLEAKS_VERSION: "8.30.1"
-
-      - name: Enforce release governance gates
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          python tools/bqa_verify.py --mode release --output dist/bqa-release-evidence.json
-          python tools/bre_verify.py --mode release --output dist/bre-release-evidence.json
 
       - name: Build source and wheel distributions
         run: python -m build
@@ -215,39 +218,36 @@ jobs:
           dependency-snapshot: false
           syft-version: v1.48.0
 
-      - name: Generate release notes from changelog
+      - name: Preserve frozen release notes
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
+          version="$(tr -d '[:space:]' < VERSION)"
+          cp "release/notes/v${version}.md" dist/RELEASE_NOTES.md
 
-          version = Path("VERSION").read_text(encoding="utf-8").strip()
-          lines = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
-          start = None
-          end = None
-          heading = f"## [{version}]"
-          for index, line in enumerate(lines):
-              if line.startswith(heading):
-                  start = index
-                  continue
-              if start is not None and index > start and line.startswith("## ["):
-                  end = index
-                  break
-          if start is None:
-              raise SystemExit(f"could not find changelog section for {version}")
-          if end is None:
-              end = len(lines)
-          body = "\n".join(lines[start + 1:end]).strip() + "\n"
-          Path("dist/RELEASE_NOTES.md").write_text(body, encoding="utf-8")
-          PY
+      - name: Enforce final BQA release authorization gate
+        run: python tools/bqa_verify.py --mode release --output dist/bqa-release-evidence.json
 
-      - name: Generate and verify SHA-256 checksums
+      - name: Generate technical evidence package
+        run: python tools/candidate_evidence.py --output dist/candidate-evidence.json
+
+      - name: Generate preliminary SHA-256 checksums for BRE validation
         shell: bash
         run: |
           set -euo pipefail
           cd dist
-          sha256sum *.whl *.tar.gz *.json > SHA256SUMS
+          sha256sum *.whl *.tar.gz *.json RELEASE_NOTES.md > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Enforce final BRE publication authorization gate
+        run: python tools/bre_verify.py --mode release --output dist/bre-release-evidence.json
+
+      - name: Generate and verify final release SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.whl *.tar.gz *.json RELEASE_NOTES.md > SHA256SUMS
           sha256sum --check SHA256SUMS
 
       - name: Generate build provenance attestation
@@ -274,6 +274,10 @@ jobs:
             dist/bonfim-sdk.cdx.json \
             dist/bqa-release-evidence.json \
             dist/bre-release-evidence.json \
+            dist/candidate-evidence.json \
+            dist/format-evidence.json \
+            dist/license-evidence.json \
+            dist/performance-evidence.json \
             --verify-tag \
             --title "${tag}" \
             --notes-file dist/RELEASE_NOTES.md
