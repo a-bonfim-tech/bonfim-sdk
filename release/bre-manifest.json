@@ -5,7 +5,7 @@
   "governance": {
     "knowledgeCategory": "C",
     "evidenceLevel": "D",
-    "approvalStatus": "Proposta"
+    "approvalStatus": "Aprovado"
   },
   "artifacts": {
     "sourceCode": {
@@ -64,8 +64,8 @@
     }
   },
   "bqa": {
-    "status": "Requires Revision"
+    "status": "Approved"
   },
-  "humanReviewStatus": "pending",
-  "publicReleaseAuthorized": false
+  "humanReviewStatus": "approved",
+  "publicReleaseAuthorized": true
 }
