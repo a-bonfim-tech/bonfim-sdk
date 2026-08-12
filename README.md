@@ -128,6 +128,8 @@ See [Architecture](docs/architecture.md), [Security Model](docs/security.md) and
 
 ## Quick start
 
+> **60-Second Governed Execution Demo:** Want to see the governance path before reading the full tutorial? Run the executable [60-Second Governed Execution Demo](docs/quickstart-60-seconds.md) to observe `REGISTER → VALIDATE → EXECUTE → AUDIT → HUMAN REVIEW REQUIRED → VERIFIED EVIDENCE` using synthetic local data only.
+
 ### Requirements
 
 - Python 3.11 through 3.14
