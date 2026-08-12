@@ -7,6 +7,14 @@
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Pre--Alpha-orange)](CHANGELOG.md)
 
+<p align="center">
+  <img
+    src="docs/assets/bonfim-sdk-architecture-hero.png"
+    alt="Bonfim SDK architecture: fail-closed validation, human review and authorization, auditable execution, and verified release evidence"
+    width="100%"
+  />
+</p>
+
 Bonfim SDK provides reusable infrastructure for developers who need AI-assisted or security-oriented components to produce structured, reviewable and serializable results without silently claiming authority, compliance or certainty.
 
 The SDK owns the governance and execution pipeline. A component author implements the domain-specific behavior inside explicit contracts.
