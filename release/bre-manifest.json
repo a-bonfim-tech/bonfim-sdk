@@ -13,16 +13,16 @@
       "path": "src"
     },
     "releaseNotes": {
-      "status": "planned",
-      "justification": "Version-specific release notes have not been frozen or approved."
+      "status": "available",
+      "path": "release/notes/v0.2.1.md"
     },
     "changelog": {
       "status": "available",
       "path": "CHANGELOG.md"
     },
     "migrationGuide": {
-      "status": "planned",
-      "justification": "A version-specific migration guide has not been prepared."
+      "status": "not_applicable",
+      "justification": "Version 0.2.1 is a patch hardening release and does not intentionally remove a documented public API; compatibility impact is documented in docs/compatibility.md."
     },
     "openapi": {
       "status": "not_applicable",
@@ -41,24 +41,26 @@
       "path": "artifacts/bonfim-sdk.cdx.json"
     },
     "checksums": {
-      "status": "planned",
-      "justification": "Release artifact checksums have not been generated or verified."
+      "status": "generated",
+      "path": "dist/SHA256SUMS",
+      "command": "cd dist && sha256sum *.whl *.tar.gz *.json > SHA256SUMS"
     },
     "licenseInformation": {
       "status": "available",
       "path": "LICENSE"
     },
     "evidencePackage": {
-      "status": "planned",
-      "justification": "A certified release evidence package has not been assembled."
+      "status": "generated",
+      "path": "dist/candidate-evidence.json",
+      "command": "python tools/candidate_evidence.py --output dist/candidate-evidence.json"
     },
     "securityDisclosure": {
       "status": "available",
       "path": "SECURITY.md"
     },
     "compatibilityPolicy": {
-      "status": "planned",
-      "justification": "Supported versions, deprecation and removal schedules are not approved."
+      "status": "available",
+      "path": "docs/compatibility.md"
     }
   },
   "bqa": {
