@@ -41,18 +41,15 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Generate and preserve CycloneDX SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      - name: Generate deterministic CycloneDX SBOM
+        run: bash tools/generate_sbom.sh artifacts/bonfim-sdk.cdx.json
+      - name: Preserve CycloneDX SBOM
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          path: .
-          format: cyclonedx-json
-          output-file: artifacts/bonfim-sdk.cdx.json
-          artifact-name: bonfim-sdk-cyclonedx-${{ github.run_id }}-${{ github.run_attempt }}.json
-          upload-artifact: true
-          upload-artifact-retention: 30
-          upload-release-assets: false
-          dependency-snapshot: false
-          syft-version: v1.48.0
+          name: bonfim-sdk-cyclonedx-${{ github.run_id }}-${{ github.run_attempt }}.json
+          path: artifacts/bonfim-sdk.cdx.json
+          if-no-files-found: error
+          retention-days: 30
 
   bqa:
     name: Governance baseline evidence
